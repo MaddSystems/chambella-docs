@@ -1,0 +1,38 @@
+graph TD
+    A[Inicio: Agente de Postulación] --> B{¿Información de contacto completa? <br>nombre, apellido, correo}
+    
+    B -->|No| C[Transferir a Agente de Bienvenida] --> Z[Fin: Agente de Postulación]
+    B -->|Sí| D{¿Vacante seleccionada? <br>current_job_interest}
+    
+    D -->|No| E[Transferir a Agente de Información de Empleo] --> Z
+    D -->|Sí| F["Solicitar: ¡Hola {nombre}! Estás postulando a {vacante}. <br>¿En qué fecha estás disponible para una entrevista?"] --> G[Recibir Fecha de Entrevista]
+    
+    G --> H[Llamar validate_interview_date] --> I{¿Fecha válida?}
+    
+    I -->|Sí| J[Llamar store_interview_date] --> K{¿store_interview_date exitoso?}
+    I -->|No| L["Respuesta: La fecha no es válida. <br>Por favor, proporciona una fecha válida (ej. 20/05/2025)."] --> G
+    
+    K -->|Sí| M[Llamar apply_to_job] --> N{¿apply_to_job exitoso?}
+    K -->|No| O["Respuesta: Hubo un problema al guardar la fecha. <br>¿Quieres intentarlo de nuevo?"] --> P{¿Reintentar?}
+    
+    N -->|Sí| Q["Respuesta: ¡Listo, {nombre}! Tu postulación para {vacante} ha sido registrada. <br>¿Qué quieres hacer ahora?"] --> R{¿Otra acción?}
+    N -->|No| S["Respuesta: Hubo un problema al registrar tu postulación. <br>¿Quieres intentarlo de nuevo?"] --> P
+    
+    P -->|Sí| F
+    P -->|No| T{¿Otra acción?}
+    
+    R -->|Buscar más vacantes| U[Transferir a Agente de Información de Empleo]
+    R -->|Seguimiento| V[Transferir a Agente de Seguimiento]
+    R -->|Dudas generales| W[Transferir a Agente de Preguntas Frecuentes]
+    R -->|Ninguna| X["Respuesta: ¡Entendido, {nombre}! Si necesitas ayuda, aquí estoy."] --> Z
+    
+    T -->|Buscar más vacantes| U
+    T -->|Seguimiento| V
+    T -->|Dudas generales| W
+    T -->|Ninguna| X
+    
+    U --> Z
+    V --> Z
+    W --> Z
+    
+    Z[Fin: Agente de Postulación]

@@ -1,0 +1,18 @@
+graph TD
+    A[Inicio: Agente Asistente de Empleo] --> B{¿Contacto completo? <br>nombre, apellido, correo}
+    
+    B -->|No| C["Saludo: ¡Hola! Soy tu asistente en TOP. <br>Primero, necesito algunos datos. ¡Vamos a empezar!"] --> D[Transferir a Agente de Bienvenida] --> Z[Fin: Agente Asistente de Empleo]
+    B -->|Sí| E["Saludo: ¡Hola {nombre}! ¿En qué te ayudo hoy? <br>Ejemplo: buscar trabajo, postularme, seguir mis postulaciones..."] --> F[Analizar Intención del Usuario]
+    
+    F -->|Búsqueda de vacantes| G[Transferir a Agente de Información de Empleo]
+    F -->|Postulación| H[Transferir a Agente de Postulación]
+    F -->|Seguimiento| I[Transferir a Agente de Seguimiento]
+    F -->|Dudas generales| J[Transferir a Agente de Preguntas Frecuentes]
+    F -->|Mensaje ambiguo o saludo| K["Solicitar: ¡Hola {nombre}! No entendí bien. <br>¿Quieres buscar trabajo, postularte, seguir tus postulaciones o algo más?"] --> F
+    
+    G --> Z
+    H --> Z
+    I --> Z
+    J --> Z
+    
+    Z[Fin: Agente Asistente de Empleo]

@@ -1,0 +1,42 @@
+graph TD
+    A[Inicio: Agente de Información de Empleo] --> B{¿Información de contacto completa? <br>nombre, apellido, correo}
+    
+    B -->|No| C[Transferir a Agente de Bienvenida] --> Z[Fin: Agente de Información de Empleo]
+    B -->|Sí| D[Analizar Intención del Usuario]
+    
+    D -->|Búsqueda de empleo| E["Solicitar: ¡Hola {nombre}! ¿Qué tipo de trabajo buscas? <br>Ejemplo: ventas, tecnología, remoto..."] --> F[Recibir Criterios de Búsqueda]
+    D -->|Seguimiento| G[Transferir a Agente de Seguimiento]
+    D -->|Dudas generales| H[Transferir a Agente de Preguntas Frecuentes]
+    
+    F --> I[Llamar search_jobs_sync o test_developer_search] --> J{¿Vacantes encontradas?}
+    
+    J -->|Sí| K["Mostrar: Aquí tienes algunas vacantes: {lista_vacantes}. <br>¿Te interesa alguna?"] --> L[Recibir Selección de Vacante]
+    J -->|No| M["Respuesta: Lo siento, no encontré vacantes con esos criterios. <br>¿Quieres buscar con otros términos?"] --> N{¿Buscar de nuevo?}
+    
+    N -->|Sí| E
+    N -->|No| O{¿Otra acción?}
+    
+    L -->|Vacante seleccionada| P[Llamar mark_job_interest] --> Q{¿mark_job_interest exitoso?}
+    L -->|Ninguna seleccionada| M
+    
+    Q -->|Sí| R["Respuesta: ¡Perfecto! Has seleccionado {vacante}. <br>¿Quieres postularte ahora?"] --> S{¿Postularse?}
+    Q -->|No| T["Respuesta: Hubo un problema al seleccionar la vacante. <br>¿Quieres intentarlo de nuevo?"] --> N
+    
+    S -->|Sí| U[Transferir a Agente de Postulación]
+    S -->|No| V{¿Otra acción?}
+    
+    V -->|Buscar más vacantes| E
+    V -->|Seguimiento| G
+    V -->|Dudas generales| H
+    V -->|Ninguna| W["Respuesta: ¡Entendido, {nombre}! Si necesitas ayuda, aquí estoy."] --> Z
+    
+    O -->|Buscar más vacantes| E
+    O -->|Seguimiento| G
+    O -->|Dudas generales| H
+    O -->|Ninguna| W
+    
+    G --> Z
+    H --> Z
+    U --> Z
+    
+    Z[Fin: Agente de Información de Empleo]

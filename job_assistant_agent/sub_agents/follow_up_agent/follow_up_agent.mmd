@@ -1,0 +1,17 @@
+graph TD
+    A[Inicio: Agente de Seguimiento] --> B{¿Contacto completo? <br>nombre, apellido, correo}
+    
+    B -->|No| C[Transferir a Agente de Bienvenida] --> Z[Fin: Agente de Seguimiento]
+    B -->|Sí| D[Consultar applied_jobs] --> E{¿Hay postulaciones?}
+    
+    E -->|Sí| F["Mostrar: ¡Hola {nombre}! Tus postulaciones: <br>{lista_postulaciones} <br>Te contactaremos por teléfono para actualizaciones. <br>¿Qué deseas hacer?"] --> G{¿Otra acción?}
+    E -->|No| H["Informar: ¡Hola {nombre}! No hay postulaciones registradas. <br>¿Buscas vacantes o tienes dudas?"] --> G
+    
+    G -->|Buscar vacantes| I[Transferir a Agente de Información de Empleo]
+    G -->|Resolver dudas| J[Transferir a Agente de Preguntas Frecuentes]
+    G -->|Finalizar| K["Despedida: ¡Entendido, {nombre}! Estoy aquí si me necesitas."] --> Z
+    
+    I --> Z
+    J --> Z
+    
+    Z[Fin: Agente de Seguimiento]

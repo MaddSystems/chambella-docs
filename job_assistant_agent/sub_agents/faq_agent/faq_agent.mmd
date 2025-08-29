@@ -1,0 +1,18 @@
+graph TD
+    A[Inicio: Agente de Preguntas Frecuentes] --> B{¿Información de contacto completa? <br>nombre, apellido, correo}
+    
+    B -->|No| C[Transferir a Agente de Bienvenida] --> Z[Fin: Agente de Preguntas Frecuentes]
+    B -->|Sí| D[Analizar Pregunta del Usuario]
+    
+    D -->|Pregunta válida| E["Respuesta: ¡Hola {nombre}! {respuesta} <br>¿Tienes otra duda o quieres hacer algo más?"] --> F{¿Otra acción?}
+    D -->|Pregunta no válida o ambigua| G["Respuesta: ¡Hola {nombre}! No entendí bien tu pregunta. <br>¿Puedes aclararla o quieres ayuda con algo más?"] --> F
+    
+    F -->|Nueva pregunta| D
+    F -->|Buscar vacantes| H[Transferir a Agente de Información de Empleo]
+    F -->|Seguimiento| I[Transferir a Agente de Seguimiento]
+    F -->|Ninguna| J["Respuesta: ¡Entendido, {nombre}! Si necesitas ayuda, aquí estoy."] --> Z
+    
+    H --> Z
+    I --> Z
+    
+    Z[Fin: Agente de Preguntas Frecuentes]

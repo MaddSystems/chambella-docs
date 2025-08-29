@@ -1,0 +1,14 @@
+🔧 Verbosity level set to: 0
+🚀 Starting Chambella unified server with verbosity level 0
+   Level 0: Minimal output
+   Level 1: Basic agent flow
+   Level 2: Detailed with session state
+   Level 3: Full debug with HTTP details
+INFO:     2a03:2880:22ff:4:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK
+INFO:     2a03:2880:22ff:1:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK
+INFO:     2a03:2880:12ff:2:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK
+INFO:     2a03:2880:12ff:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK
+INFO:     2a03:2880:22ff:9:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK
+INFO:     2a03:2880:10ff:4:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK
+INFO:     2a03:2880:10ff:72:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK
+INFO:     2a03:2880:10ff:44:::0 - "POST /webhook-whatsapp HTTP/1.1" 200 OK

@@ -1,0 +1,37 @@
+graph TD
+    A[Inicio: Agente de Bienvenida] --> B{¿Estado: <br>nombre, apellido, correo presentes?}
+    
+    B -->|Todos presentes y no vacíos| C["Respuesta: ¡Genial, ya tengo tu información de contacto! <br>¿En qué tipo de trabajo estás interesado?"] --> D[Transferir a Agente de Información de Empleo]
+    
+    B -->|Falta alguno| E{Analizar Entrada del Usuario}
+    
+    E -->|Sin entrada o Hola| F["Solicitar: ¡Hola! Soy Chambella... <br>¿Cuál es tu nombre?"] --> G[Recibir Nombre]
+    E -->|Nombre proporcionado e.g. Juan Pérez| G
+    
+    G -->|¿Nombre plausible?| H[Extraer Nombre, Apellido <br>si están combinados] --> I{¿apellido en Estado?}
+    G -->|No plausible| J["Solicitar: Por favor, proporciona un nombre válido."] --> G
+    
+    I -->|Sí| K{¿correo en Estado?}
+    I -->|No| L["Solicitar: Gracias {nombre}. <br>¿Y cuál es tu apellido?"] --> M[Recibir Apellido]
+    
+    M -->|¿Apellido plausible?| N[Almacenar Apellido Temporalmente] --> K
+    M -->|No plausible| O["Solicitar: Por favor, proporciona un apellido válido."] --> M
+    
+    K -->|Sí| P[Datos Completos]
+    K -->|No| Q["Solicitar: Perfecto, {nombre} {apellido}. <br>Por último, necesito tu correo electrónico..."] --> R[Recibir Correo]
+    
+    R -->|¿Correo contiene @ y .?| S[Almacenar Correo Temporalmente] --> P
+    R -->|Correo inválido| T["Solicitar: El correo electrónico no parece válido. <br>Por favor, proporciona un correo con @ y ."] --> R
+    
+    P[Datos Completos: <br>Nombre, Apellido, Correo] --> U[Llamar update_contact_info nombre, apellido, correo]
+    
+    U --> V{Resultado de update_contact_info}
+    
+    V -->|estado: éxito| W["Respuesta: ¡Muchas gracias por tu información, {nombre}! <br>Ahora puedo ayudarte a encontrar trabajos... <br>¿Qué tipo de trabajo estás buscando?"] --> D
+    V -->|estado: error| X["Respuesta: Mensaje de Error <br>e.g. El correo electrónico no parece válido."] --> Y[Re-solicitar Campo Problemático]
+    
+    Y -->|Nombre| F
+    Y -->|Apellido| L
+    Y -->|Correo| Q
+    
+    D[Transferir a Agente de Información de Empleo] --> Z[Fin: Agente de Bienvenida Completado]

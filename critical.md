@@ -1,0 +1,1 @@
+python main.py --v 3 2>&1 | grep "\\[CRITICAL DEBUG\\]"
