@@ -19,6 +19,46 @@ import datetime
 import re
 import calendar
 
+# Global variable for Id_Puesto field name (internal use)
+ID_PUESTO = "id_perfil_de_puesto"
+
+# Global variable for interview days field name (internal use)
+DIAS_ENTREVISTA = "dias_para_atender_entrevistas"
+
+# Global variable for interview times field name (internal use)
+HORARIOS_ENTREVISTA = "horarios_disponibles_para_entrevistar"
+
+# Global variables for other standardized field names (internal use)
+PUESTO = "puesto"
+NOMBRE_VACANTE = "nombre_de_vacante"
+EMPRESA = "empresa"
+DEPARTAMENTO = "departamento"
+AREA = "area"
+
+# Field mapping for backward compatibility (new_name -> old_name for API responses)
+FIELD_MAPPING_RESPONSE = {
+    "id_perfil_de_puesto": "Id_Puesto",
+    "puesto": "Puesto",
+    "nombre_de_vacante": "Nombre_de_vacante",
+    "empresa": "Empresa",
+    "departamento": "Departamento",
+    "area": "Area",
+    "dias_para_atender_entrevistas": "Dias_para_atender_Entrevistas",
+    "horarios_disponibles_para_entrevistar": "Horarios_disponibles_para_Entrevistar",
+}
+
+# Field mapping for querying (old_name -> new_name for internal queries)
+FIELD_MAPPING_QUERY = {
+    "Id_Puesto": "id_perfil_de_puesto",
+    "Puesto": "puesto", 
+    "Nombre_de_vacante": "nombre_de_vacante",
+    "Empresa": "empresa",
+    "Departamento": "departamento",
+    "Area": "area",
+    "Dias_para_atender_Entrevistas": "dias_para_atender_entrevistas",
+    "Horarios_disponibles_para_Entrevistar": "horarios_disponibles_para_entrevistar",
+}
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -152,7 +192,8 @@ def search_by_ad_id(ad_id: str, ctx: Context, detail_level: str = "summary") -> 
         }
         
         response = es.search(
-            index="vacantes",
+            #index="vacantes",
+            index="vacantefinal",
             body=query
         )
         
@@ -164,8 +205,10 @@ def search_by_ad_id(ad_id: str, ctx: Context, detail_level: str = "summary") -> 
         vacancy["_index"] = response["hits"]["hits"][0]["_index"]
         
         formatted_result = format_document(vacancy, detail_level)
-        
-        logger.info(f"Found vacancy with ad_id {ad_id}, Id_Puesto: {vacancy.get('Id_Puesto', 'N/A')}")
+        logger.info(vacancy)
+        logger.info(detail_level)
+        logger.info(f"Found vacancy with ad_id {ad_id}, id_perfil_de_puesto: {formatted_result.get(ID_PUESTO, 'N/A')}")
+        logger.info(formatted_result)
         return json.dumps(formatted_result, cls=EsJSONEncoder)
         
     except Exception as e:
@@ -211,18 +254,28 @@ def is_vacancy_available(doc: Dict[str, Any]) -> bool:
 def format_document(doc: Dict[str, Any], detail_level: str = "summary") -> Dict[str, Any]:
     """
     Format a document for display with appropriate level of detail.
+    Maps internal new field names back to old field names for backward compatibility.
     """
     result = {}
     
-    # Basic fields always included
+    # Basic fields to include (using internal field names first)
     basic_fields = [
-        "Id_Puesto", "Puesto", "Nombre_de_vacante", 
-        "Empresa", "Departamento", "Area"
+        ID_PUESTO, PUESTO, NOMBRE_VACANTE, 
+        EMPRESA, DEPARTAMENTO, AREA
     ]
     
+    # Check for both old and new field names and map to old names for response
     for field in basic_fields:
         if field in doc:
-            result[field] = doc[field]
+            # Map new field name back to old field name for response
+            old_field_name = FIELD_MAPPING_RESPONSE.get(field, field)
+            result[old_field_name] = doc[field]
+        else:
+            # Check if any old field name maps to this new field
+            for old_field, new_field in FIELD_MAPPING_QUERY.items():
+                if new_field == field and old_field in doc:
+                    result[old_field] = doc[old_field]
+                    break
     
     # Include ID and source index
     if "_id" in doc:
@@ -230,17 +283,25 @@ def format_document(doc: Dict[str, Any], detail_level: str = "summary") -> Dict[
     if "_index" in doc:
         result["_index"] = doc["_index"]
     
-    # Interview scheduling fields - prioritized
+    # Interview scheduling fields - check both old and new names
     interview_fields = [
-        "Dias_para_atender_Entrevistas",
-        "Horarios_disponibles_para_Entrevistar",
+        DIAS_ENTREVISTA,
+        HORARIOS_ENTREVISTA,
         "Tiempo_maximo_de_contratacion"
     ]
     
     # Always include interview scheduling fields if available
     for field in interview_fields:
         if field in doc and doc[field] and doc[field] != "-":
-            result[field] = doc[field]
+            # Map new field name back to old field name for response
+            old_field_name = FIELD_MAPPING_RESPONSE.get(field, field)
+            result[old_field_name] = doc[field]
+        else:
+            # Check for old field name
+            for old_field, new_field in FIELD_MAPPING_QUERY.items():
+                if new_field == field and old_field in doc and doc[old_field] and doc[old_field] != "-":
+                    result[old_field] = doc[old_field]
+                    break
     
     # For summary view, include just key fields
     if detail_level == "summary":
@@ -265,7 +326,9 @@ def format_document(doc: Dict[str, Any], detail_level: str = "summary") -> Dict[
         
         for key, value in doc.items():
             if key not in exclude_fields:
-                result[key] = value
+                # Map new field names back to old field names for response
+                mapped_key = FIELD_MAPPING_RESPONSE.get(key, key)
+                result[mapped_key] = value
                 
         # Add availability status
         result["disponible"] = is_vacancy_available(doc)
@@ -291,13 +354,13 @@ def perform_field_search(field: str, value: str, es_client: OpenSearch, index: s
         logger.debug(f"Field search query: {json.dumps(query)}")
         
         results = []
-        indices = [index] if index else ["vacantes", "puestos"]
+        indices = [index] if index else ["vacantefinal", "puestos"]
         
-        # First search in vacantes to prioritize them
-        if "vacantes" in indices:
+        # First search in vacantefinal to prioritize them
+        if "vacantefinal" in indices:
             try:
                 response = es_client.search(
-                    index="vacantes",
+                    index="vacantefinal",
                     body=query
                 )
                 
@@ -307,10 +370,10 @@ def perform_field_search(field: str, value: str, es_client: OpenSearch, index: s
                     hit_source["_index"] = hit["_index"]
                     results.append(hit_source)
                     
-                logger.debug(f"Found {len(response['hits']['hits'])} results in vacantes for field {field}={value}")
+                logger.debug(f"Found {len(response['hits']['hits'])} results in vacantefinal for field {field}={value}")
                 
             except Exception as e:
-                logger.warning(f"Error searching index vacantes for field {field}: {e}")
+                logger.warning(f"Error searching index vacantefinal for field {field}: {e}")
         
         # Then search in puestos, but only if we need more results
         if "puestos" in indices and len(results) < size:
@@ -324,7 +387,7 @@ def perform_field_search(field: str, value: str, es_client: OpenSearch, index: s
                             "bool": {
                                 "must": [
                                     {"wildcard": {field: f"*{value.lower()}*"}},
-                                    {"terms": {"Id_Puesto": available_id_puestos}}
+                                    {"terms": {ID_PUESTO: available_id_puestos}}
                                 ]
                             }
                         }
@@ -352,10 +415,10 @@ def perform_field_search(field: str, value: str, es_client: OpenSearch, index: s
         logger.error(f"Error in perform_field_search for {field}={value}: {e}")
         return []
 
-# Helper function to get all Id_Puesto values from vacantes
+# Helper function to get all id_perfil_de_puesto values from vacantefinal
 def get_available_id_puestos(es_client: OpenSearch) -> List[str]:
     """
-    Get a list of Id_Puesto values from all vacancies.
+    Get a list of id_perfil_de_puesto values from all vacancies.
     """
     try:
         query = {
@@ -363,24 +426,27 @@ def get_available_id_puestos(es_client: OpenSearch) -> List[str]:
             "query": {
                 "match_all": {}
             },
-            "_source": ["Id_Puesto"]
+            "_source": [ID_PUESTO, "Id_Puesto"]
         }
         
         response = es_client.search(
-            index="vacantes",
+            index="vacantefinal",
             body=query
         )
         
         id_puestos = []
         for hit in response["hits"]["hits"]:
-            id_puesto = hit["_source"].get("Id_Puesto")
+            id_puesto = hit["_source"].get(ID_PUESTO)
+            if not id_puesto:
+                # Check for old field name
+                id_puesto = hit["_source"].get("Id_Puesto")
             if id_puesto:
                 id_puestos.append(id_puesto)
                 
         return id_puestos
         
     except Exception as e:
-        logger.error(f"Error getting Id_Puesto values: {e}")
+        logger.error(f"Error getting id_perfil_de_puesto values: {e}")
         return []
 
 # Paginate results from puestos index
@@ -392,14 +458,14 @@ def paginated_vacantes_from_puestos(
     limit=10
 ):
     """
-    Paginate results from puestos index based on vacantes availability.
+    Paginate results from puestos index based on vacantefinal availability.
     """
     try:
         available_id_puestos = get_available_id_puestos(es)
-        logger.debug(f"Available Id_Puesto from vacantes: {available_id_puestos}")
+        logger.debug(f"Available id_perfil_de_puesto from vacantefinal: {available_id_puestos}")
         
         if not available_id_puestos:
-            logger.warning("No Id_Puesto found in vacantes")
+            logger.warning("No id_perfil_de_puesto found in vacantefinal")
             return []
         
         if "must" not in puestos_query["query"]["bool"]:
@@ -434,7 +500,7 @@ def paginated_vacantes_from_puestos(
 @mcp.tool()
 def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summary") -> str:
     """
-    Search for job/vacancy by ID_Puesto and return detailed information from both vacantes and puestos.
+    Search for job/vacancy by id_perfil_de_puesto and return detailed information from both vacantefinal and puestos.
     """
     logger.info(f"SEARCH REQUEST: search_by_id_puesto called with ID: {id_puesto}, detail_level: {detail_level}")
     try:
@@ -445,13 +511,19 @@ def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summa
         vacantes_query = {
             "size": 1,
             "query": {
-                "match": {"Id_Puesto": id_puesto}
+                "bool": {
+                    "should": [
+                        {"match": {ID_PUESTO: id_puesto}},
+                        {"match": {"Id_Puesto": id_puesto}}
+                    ],
+                    "minimum_should_match": 1
+                }
             }
         }
         
         logger.info(f"QUERY: vacantes_query={json.dumps(vacantes_query)}")
         vacantes_response = es.search(
-            index="vacantes",
+            index="vacantefinal",
             body=vacantes_query
         )
         
@@ -460,7 +532,13 @@ def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summa
         puestos_query = {
             "size": 1,
             "query": {
-                "match": {"Id_Puesto": id_puesto}
+                "bool": {
+                    "should": [
+                        {"match": {ID_PUESTO: id_puesto}},
+                        {"match": {"Id_Puesto": id_puesto}}
+                    ],
+                    "minimum_should_match": 1
+                }
             }
         }
         
@@ -472,11 +550,11 @@ def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summa
         
         logger.info(f"RESPONSE: puestos search found {puestos_response['hits']['total']['value']} results")
         
-        result = {"Id_Puesto": id_puesto}
+        result = {ID_PUESTO: id_puesto}
         
         if puestos_response["hits"]["total"]["value"] > 0:
             puesto_data = puestos_response["hits"]["hits"][0]["_source"]
-            puesto_id = puesto_data.get("Id_Puesto")
+            puesto_id = puesto_data.get(ID_PUESTO) or puesto_data.get("Id_Puesto")
             logger.info(f"DATA CHECK: Found puesto data with ID={puesto_id}, requested ID={id_puesto}")
             
             if puesto_id != id_puesto:
@@ -489,7 +567,7 @@ def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summa
         vacancy_available = False
         if vacantes_response["hits"]["total"]["value"] > 0:
             vacante_data = vacantes_response["hits"]["hits"][0]["_source"]
-            vacante_id = vacante_data.get("Id_Puesto")
+            vacante_id = vacante_data.get(ID_PUESTO) or vacante_data.get("Id_Puesto")
             logger.info(f"DATA CHECK: Found vacante data with ID={vacante_id}, requested ID={id_puesto}")
             
             if vacante_id != id_puesto:
@@ -500,16 +578,16 @@ def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summa
                     result[key] = value
             
             result["vacante_id"] = vacantes_response["hits"]["hits"][0]["_id"]
-            result["vacante_index"] = "vacantes"
+            result["vacante_index"] = "vacantefinal"
             vacancy_available = True
         
         if len(result) <= 1:
-            logger.warning(f"NO DATA: No data found for Id_Puesto {id_puesto}")
-            return json.dumps({"error": f"No job found with Id_Puesto: {id_puesto}"})
+            logger.warning(f"NO DATA: No data found for id_perfil_de_puesto {id_puesto}")
+            return json.dumps({"error": f"No job found with id_perfil_de_puesto: {id_puesto}"})
         
         result["disponible"] = vacancy_available and is_vacancy_available(result)
         
-        final_id = result.get("Id_Puesto")
+        final_id = result.get(ID_PUESTO)
         if final_id != id_puesto:
             logger.error(f"CRITICAL ERROR: Final result has wrong ID! Requested={id_puesto}, Result={final_id}")
         
@@ -525,15 +603,15 @@ def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summa
                 if key not in exclude_fields:
                     detailed_result[key] = value
             
-            logger.info(f"SUCCESS: Returning comprehensive details for Id_Puesto {id_puesto}")
+            logger.info(f"SUCCESS: Returning comprehensive details for id_perfil_de_puesto {id_puesto}")
             return json.dumps(detailed_result, cls=EsJSONEncoder)
         
         else:
             important_fields = [
-                "Id_Puesto", "Puesto", "Nombre_de_vacante", "Empresa", "Departamento", "Area",
+                "id_perfil_de_puesto", "Puesto", "Nombre_de_vacante", "Empresa", "Departamento", "Area",
                 "Objetivo_del_puesto", "Sueldo_Neto_Min", "Sueldo_Max", 
                 "Lugar", "Oficinas", "Tipo_de_contratacion", "Jornada_Laboral",
-                "Dias_para_atender_Entrevistas", "Horarios_disponibles_para_Entrevistar",
+                DIAS_ENTREVISTA, HORARIOS_ENTREVISTA,
                 "Tiempo_maximo_de_contratacion", "Formacion"
             ]
             
@@ -542,7 +620,7 @@ def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summa
                 if field in result and result[field] and result[field] != "-":
                     formatted_result[field] = result[field]
             
-            core_fields = ["Id_Puesto", "disponible", "_id", "_index"]
+            core_fields = ["id_perfil_de_puesto", "disponible", "_id", "_index"]
             for field in core_fields:
                 if field in result:
                     formatted_result[field] = result[field]
@@ -573,7 +651,7 @@ def search_available_vacancies(ctx: Context, detail_level: str = "summary", offs
             }
         }
         response = es.search(
-            index="vacantes",
+            index="vacantefinal",
             body=query
         )
         results = []

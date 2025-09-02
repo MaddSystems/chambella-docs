@@ -24,6 +24,9 @@ except ValueError:
 MCP_SERVER_URL = f"http://localhost:{MCP_PORT_INT}"  # Dynamic URL from env
 MCP_CONNECTION_TIMEOUT = 30  # Timeout in seconds
 
+# Global variables for field names
+DIAS_ENTREVISTA = "dias_para_atender_entrevistas"
+HORARIOS_ENTREVISTA = "horarios_disponibles_para_entrevistar"
 
 def get_job_details_by_id(job_id: str, tool_context: ToolContext = None) -> dict:
     """Get detailed information about a specific job by ID using MCP server."""
@@ -118,8 +121,8 @@ def get_available_interview_slots(tool_context: ToolContext) -> dict:
         job_data = job_details_result["job_details"]
         
         # Get interview days and times from job details
-        dias_entrevista_str = job_data.get("Dias_para_atender_Entrevistas", "")
-        horarios_disponibles_str = job_data.get("Horarios_disponibles_para_Entrevistar", "")
+        dias_entrevista_str = job_data.get(DIAS_ENTREVISTA, "")
+        horarios_disponibles_str = job_data.get(HORARIOS_ENTREVISTA, "")
         logger.info("Dias para entrevistas: %s", dias_entrevista_str)
         logger.error(f"[CRITICAL DEBUG] Dias para entrevistas: {dias_entrevista_str}")
         logger.info("Horarios disponibles para entrevistas: %s", horarios_disponibles_str)
@@ -611,7 +614,7 @@ application_agent = Agent(
     -   SIEMPRE muestra al usuario EXACTAMENTE el mensaje devuelto por las herramientas.
     -   NUNCA muestres fechas o horarios sin numerar.
     -   NUNCA muestres días de la semana sin fechas específicas.
-    -   NUNCA intentes extraer o mostrar información directamente de los campos "Dias_para_atender_Entrevistas" o "Horarios_disponibles_para_Entrevistar".
+    -   NUNCA intentes extraer o mostrar información directamente de los campos "dias_para_atender_entrevistas" o "horarios_disponibles_para_entrevistar".
     -   NUNCA generes tu propio formato para las fechas u horarios.
     -   El usuario DEBE responder con números para las selecciones.
 

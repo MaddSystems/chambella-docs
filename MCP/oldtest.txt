@@ -1,0 +1,226 @@
+        # NEW TESTS FOR get_available_options tool
+        # {
+        #     "tool": "get_available_options",
+        #     "params": {},
+        #     "description": "Test get_available_options with no parameters (should return all available options)"
+        # },
+        
+        # # Test search_available_vacancies with pagination (first page, limit 1)
+        # {
+        #     "tool": "search_available_vacancies",
+        #     "params": {"detail_level": "summary", "offset": 0, "limit": 1},
+        #     "description": "Test pagination - first page with 1 result"
+        # },
+        
+        # # Test pagination on search_available_vacancies (try second page to see if it exists)
+        # {
+        #     "tool": "search_available_vacancies", 
+        #     "params": {"detail_level": "summary", "offset": 1, "limit": 1},
+        #     "description": "Test pagination - second page"
+        # },
+        
+        # # Test with larger limit to get all available results
+        # {
+        #     "tool": "search_available_vacancies",
+        #     "params": {"detail_level": "summary", "offset": 0, "limit": 10},
+        #     "description": "Test larger limit for available vacancies"
+        # },
+        
+        # # Test empty params (fallback behavior) - should be equivalent to above
+        # {
+        #     "tool": "search_available_vacancies",
+        #     "params": {},
+        #     "description": "Test fallback behavior with empty params"
+        # },
+        
+        # # Test search_by_id_puesto with known ID (custodio)
+        # {
+        #     "tool": "search_by_id_puesto",
+        #     "params": {"id_puesto": "36", "detail_level": "detail"},
+        #     "description": "Test search by ID - detailed view (Custodio)"
+        # },
+        
+        # # Test search_by_id_puesto with known ID (Application Manager)
+        # {
+        #     "tool": "search_by_id_puesto",
+        #     "params": {"id_puesto": "11"},
+        #     "description": "Test search by ID - summary view (Application Manager)"
+        # },
+        
+        # # Test get_interview_schedule
+        # {
+        #     "tool": "get_interview_schedule",
+        #     "params": {"id_puesto": "36"},
+        #     "description": "Test interview schedule retrieval"
+        # },
+        
+        # # Test search by exact puesto name
+        # {
+        #     "tool": "search_by_puesto",
+        #     "params": {"puesto": "Custodio 1°"},
+        #     "description": "Test search by exact job title"
+        # },
+        
+        # # Test search by partial puesto name (wildcard-like search)
+        # {
+        #     "tool": "search_by_puesto",
+        #     "params": {"puesto": "*Custodio*"},
+        #     "description": "Test search by partial job title"
+        # },
+        
+        # # Test search by empresa
+        # {
+        #     "tool": "search_by_empresa",
+        #     "params": {"empresa": "SNIPER"},
+        #     "description": "Test search by company name"
+        # },
+        
+        # # Test search by departamento
+        # {
+        #     "tool": "search_by_departamento",
+        #     "params": {"departamento": "Sniper"},
+        #     "description": "Test search by department"
+        # },
+        
+        # # Test search by jornada (work schedule) - MISSING TEST ADDED
+        # {
+        #     "tool": "search_by_jornada",
+        #     "params": {"jornada": "Horarios rotativos"},
+        #     "description": "Test search by work schedule - rotating shifts"
+        # },
+        
+        # # Test search by jornada with another schedule type
+        # {
+        #     "tool": "search_by_jornada",
+        #     "params": {"jornada": "Lunes a viernes"},
+        #     "description": "Test search by work schedule - Monday to Friday"
+        # },
+        
+        # # Add debug test for jornada with exact case
+        # {
+        #     "tool": "search_by_jornada",
+        #     "params": {"jornada": "Lunes a viernes", "detail_level": "detail"},
+        #     "description": "DEBUG: Test search by work schedule - exact case Monday to Friday with detail"
+        # },
+        
+        # # Test search by area_de_trabajo (renamed)
+        # {
+        #     "tool": "search_by_area_de_trabajo",
+        #     "params": {"area": "campo"},
+        #     "description": "Test search by work area - campo"
+        # },
+        
+        # # Add a more specific test to debug the area search
+        # {
+        #     "tool": "search_by_area_de_trabajo", 
+        #     "params": {"area": "oficina"},
+        #     "description": "Test search by work area - oficina"
+        # },
+
+        # # Test search by profile type
+        # {
+        #     "tool": "search_by_tipo_de_perfil",
+        #     "params": {"tipo": "Administrativo"},
+        #     "description": "Test search by profile type - Administrativo"
+        # },
+        
+        # # Test search by profile type
+        # {
+        #     "tool": "search_by_tipo_de_perfil",
+        #     "params": {"tipo": "Dentista"},
+        #     "description": "Test search by profile type - Dentista (should find nothing)"
+        # },
+        
+        # # Test search by salary range
+        # {
+        #     "tool": "search_by_sueldo",
+        #     "params": {"min_sueldo": "9000", "max_sueldo": "10000"},
+        #     "description": "Test search by salary range"
+        # },
+        
+        # # Test search by age range (young adults)
+        # {
+        #     "tool": "search_by_edad",
+        #     "params": {"min_edad": "18", "max_edad": "30"},
+        #     "description": "Test search by age range - young adults"
+        # },
+        
+        # # Test search by age range (experienced workers)
+        # {
+        #     "tool": "search_by_edad",
+        #     "params": {"min_edad": "30", "max_edad": "50"},
+        #     "description": "Test search by age range - experienced workers"
+        # },
+        
+        # # Test search by age range with pagination
+        # {
+        #     "tool": "search_by_edad",
+        #     "params": {"min_edad": "20", "max_edad": "60", "detail_level": "detail", "offset": 0, "limit": 2},
+        #     "description": "Test search by age range with pagination"
+        # },
+
+        # # Test search by location
+        # {
+        #     "tool": "search_by_ubicacion",
+        #     "params": {"ubicacion": "Madd"},
+        #     "description": "Test search by location"
+        # },
+        
+        # # Test search by keyword (wildcard across multiple fields)
+        # {
+        #     "tool": "search_by_keyword",
+        #     "params": {"keyword": "custodia"},
+        #     "description": "Test search by keyword - custodia"
+        # },
+        
+        # # Test search by education level (renamed)
+        # {
+        #     "tool": "search_by_educacion",
+        #     "params": {"nivel": "secundaria"},
+        #     "description": "Test search by education level"
+        # },
+        
+        # # Test search by años de experiencia (renamed for clarity)
+        # {
+        #     "tool": "search_by_anios_de_experiencia",
+        #     "params": {"anios": "1"},
+        #     "description": "Test search by experience years - 1 year"
+        # },
+        # {
+        #     "tool": "search_by_anios_de_experiencia",
+        #     "params": {"anios": "5"},
+        #     "description": "Test search by experience years - 5 years"
+        # },
+        
+        # # Test search by skills (renamed)
+        # {
+        #     "tool": "search_by_habilidades",
+        #     "params": {"skills": "comunicación"},
+        #     "description": "Test search by skills"
+        # },
+        
+        # # Test search_combined_criteria with multiple criteria
+        # {
+        #     "tool": "search_combined_criteria",
+        #     "params": {
+        #         "departamento": "Sniper",
+        #         "empresa": "SNIPER", 
+        #         "jornada": "Horarios rotativos",
+        #         "area": "oficina",
+        #         "ubicacion": "Madd",
+        #         "min_experiencia": "1",
+        #         "detail_level": "summary",
+        #         "offset": 0,
+        #         "limit": 10
+        #     },
+        #     "description": "Test search_combined_criteria with multiple criteria"
+        # },
+        
+        # # Test search_combined_criteria with single criterion
+        # {
+        #     "tool": "search_combined_criteria",
+        #     "params": {
+        #         "departamento": "Sniper"
+        #     },
+        #     "description": "Test search_combined_criteria with single criterion"
+        # },

@@ -403,7 +403,7 @@
 
         function confirmDeleteSession() {
             const password = document.getElementById('deletePassword').value;
-            if (password !== '303103') {
+            if (password !== '{{ delete_password }}') {
                 alert('Incorrect password. Access denied.');
                 return;
             }

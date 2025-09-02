@@ -96,63 +96,13 @@ MESSENGER_PAGE_ACCESS_TOKEN = get_env_var("MESSENGER_PAGE_ACCESS_TOKEN")
 WHATSAPP_ACCESS_TOKEN = get_env_var("WHATSAPP_ACCESS_TOKEN")
 WHATSAPP_PHONE_NUMBER_ID = get_env_var("WHATSAPP_PHONE_NUMBER_ID")
 
-# Telegram configuration for error alerts
-TELEGRAM_BOT_TOKEN = get_env_var("TELEGRAM_BOT_TOKEN")
-TELEGRAM_ERROR_CHAT_ID = get_env_var("TELEGRAM_ERROR_CHAT_ID")
-
-# Delete session password
-DELETE_PASSWORD = get_env_var("DELETE_PASSWORD", "GPSc0ntr0l1")
-
 # Log environment variables on startup
-# WARNING: Logging raw tokens can expose secrets in logs. Remove or mask in production.
-logger.info(
-    "Loaded environment variables:\n"
-    f"VERIFY_TOKEN={VERIFY_TOKEN}\n"
-    f"MESSENGER_PAGE_ACCESS_TOKEN={MESSENGER_PAGE_ACCESS_TOKEN}\n"
-    f"\n"
-    f"WHATSAPP_ACCESS_TOKEN={WHATSAPP_ACCESS_TOKEN}\n"
-    f"WHATSAPP_PHONE_NUMBER_ID={WHATSAPP_PHONE_NUMBER_ID}\n"
-    f"TELEGRAM_BOT_TOKEN={'***' if TELEGRAM_BOT_TOKEN else 'None'}\n"
-    f"TELEGRAM_ERROR_CHAT_ID={TELEGRAM_ERROR_CHAT_ID}"
-)
-
-
-# Telegram error notification function
-async def send_telegram_error_alert(phone_number: str, error_message: str, channel: str = "whatsapp") -> bool:
-    """Send error alert to Telegram when WhatsApp/Messenger message fails."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_ERROR_CHAT_ID:
-        logger.warning("Telegram configuration not set. Cannot send error alert.")
-        return False
-    
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        
-        # Format the error message
-        alert_message = (
-            f"🚨 *ERROR EN CHAMBELLA*\n\n"
-            f"*Canal:* {channel.upper()}\n"
-            f"*Teléfono:* {phone_number}\n"
-            f"*Error:* {error_message}\n"
-            f"*Timestamp:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"Por favor revisar la configuración del servidor."
-        )
-        
-        payload = {
-            'chat_id': TELEGRAM_ERROR_CHAT_ID,
-            'text': alert_message,
-            'parse_mode': 'Markdown'
-        }
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, timeout=10) as response:
-                response.raise_for_status()
-                response_json = await response.json()
-                logger.info(f"Telegram error alert sent successfully: {response_json}")
-                return True
-                
-    except Exception as e:
-        logger.error(f"Failed to send Telegram error alert: {e}")
-        return False
+logger.info(f"Loaded environment variables:"
+            f"\nVERIFY_TOKEN={'set' if VERIFY_TOKEN else 'unset'}"
+            f"\nMESSENGER_PAGE_ACCESS_TOKEN={'set' if MESSENGER_PAGE_ACCESS_TOKEN else 'unset'}"
+            f"\nWHATSAPP_ACCESS_TOKEN={'set' if WHATSAPP_ACCESS_TOKEN else 'unset'}"
+            f"\nWHATSAPP_PHONE_NUMBER_ID={WHATSAPP_PHONE_NUMBER_ID}"
+           )
 
 
 # Unified message sending function
@@ -170,15 +120,11 @@ async def send_message_async(channel: str, recipient_id: str, message: str) -> b
 async def send_whatsapp_message(recipient_id: str, message: str) -> bool:
     """Send a WhatsApp message using the WhatsApp Cloud API."""
     if not WHATSAPP_ACCESS_TOKEN or not WHATSAPP_PHONE_NUMBER_ID:
-        error_msg = "WhatsApp environment variables are not set."
-        logger.error(error_msg)
-        await send_telegram_error_alert(recipient_id, error_msg, "whatsapp")
+        logger.error("WhatsApp environment variables are not set.")
         return False
-    
-    url = f"https://graph.facebook.com/v22.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v19.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
-        "Content-Type": "application/json"
     }
     payload = {
         "messaging_product": "whatsapp",
@@ -186,70 +132,36 @@ async def send_whatsapp_message(recipient_id: str, message: str) -> bool:
         "type": "text",
         "text": {"body": message},
     }
-    
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload, timeout=15) as response:
-                response_text = await response.text()
-                
-                if response.status == 200:
-                    response_json = await response.json() if response_text else {}
-                    logger.info(f"WhatsApp message sent to {recipient_id}: {response_json}")
-                    return True
-                else:
-                    error_msg = f"WhatsApp API error {response.status}: {response_text}"
-                    logger.error(error_msg)
-                    await send_telegram_error_alert(recipient_id, error_msg, "whatsapp")
-                    return False
-                    
+            async with session.post(url, headers=headers, json=payload, timeout=10) as response:
+                response.raise_for_status()
+                response_json = await response.json()
+                logger.info(f"WhatsApp message sent to {recipient_id}: {response_json}")
+                return True
     except aiohttp.ClientError as e:
-        error_msg = f"WhatsApp network error: {str(e)}"
-        logger.error(error_msg)
-        await send_telegram_error_alert(recipient_id, error_msg, "whatsapp")
-        return False
-    except Exception as e:
-        error_msg = f"WhatsApp unexpected error: {str(e)}"
-        logger.error(error_msg)
-        await send_telegram_error_alert(recipient_id, error_msg, "whatsapp")
+        logger.error(f"Error sending WhatsApp message: {e}")
         return False
 
 # Facebook Messenger-specific message sending (Corrected with aiohttp)
 async def send_facebook_message(recipient_id: str, message: str) -> bool:
     """Send a Facebook Messenger message using the Messenger Platform API."""
     if not MESSENGER_PAGE_ACCESS_TOKEN:
-        error_msg = "Messenger page access token is not set."
-        logger.error(error_msg)
-        await send_telegram_error_alert(recipient_id, error_msg, "messenger")
+        logger.error("Messenger page access token is not set.")
         return False
-    
     params = {"access_token": MESSENGER_PAGE_ACCESS_TOKEN}
     payload = {"recipient": {"id": recipient_id}, "message": {"text": message}}
-    url = "https://graph.facebook.com/v22.0/me/messages"
+    url = "https://graph.facebook.com/v19.0/me/messages"
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, params=params, json=payload, timeout=15) as response:
-                response_text = await response.text()
-                
-                if response.status == 200:
-                    response_json = await response.json() if response_text else {}
-                    logger.info(f"Messenger message sent to {recipient_id}: {response_json}")
-                    return True
-                else:
-                    error_msg = f"Messenger API error {response.status}: {response_text}"
-                    logger.error(error_msg)
-                    await send_telegram_error_alert(recipient_id, error_msg, "messenger")
-                    return False
-                    
+            async with session.post(url, params=params, json=payload, timeout=10) as response:
+                response.raise_for_status()
+                response_json = await response.json()
+                logger.info(f"Messenger message sent to {recipient_id}: {response_json}")
+                return True
     except aiohttp.ClientError as e:
-        error_msg = f"Messenger network error: {str(e)}"
-        logger.error(error_msg)
-        await send_telegram_error_alert(recipient_id, error_msg, "messenger")
-        return False
-    except Exception as e:
-        error_msg = f"Messenger unexpected error: {str(e)}"
-        logger.error(error_msg)
-        await send_telegram_error_alert(recipient_id, error_msg, "messenger")
+        logger.error(f"Error sending Messenger message: {e}")
         return False
 
 # ===== START: ADDED AD_ID AND REFERRAL HANDLING LOGIC =====
@@ -257,7 +169,16 @@ async def send_facebook_message(recipient_id: str, message: str) -> bool:
 async def search_by_ad_id(ad_id: str) -> dict:
     """Calls an external tool to find job info by ad_id using aiohttp."""
     # This function assumes a local tool is running, as in the old file.
-    url = "http://localhost:9000/mcp/tool/search_by_ad_id"
+    mcp_port_str = os.getenv("MCP_PORT")
+    if not mcp_port_str:
+        logger.error("MCP_PORT environment variable is required but not set.")
+        raise RuntimeError("MCP_PORT environment variable is required for search_by_ad_id")
+    try:
+        mcp_port = int(mcp_port_str)
+    except ValueError:
+        logger.error(f"Invalid MCP_PORT value: {mcp_port_str}")
+        raise
+    url = f"http://localhost:{mcp_port}/mcp/tool/search_by_ad_id"
     payload = {"ad_id": ad_id, "detail_level": "summary"}
     logger.info(f"Calling external tool to search for ad_id: {ad_id}")
     try:
@@ -602,7 +523,7 @@ def db_interface():
     """Serve the database query interface."""
     try:
         users = get_sessions_from_db()
-        return render_template('index.html', users=users, delete_password=DELETE_PASSWORD)
+        return render_template('index.html', users=users)
     except Exception as e:
         logger.error(f"Error serving database interface: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -619,7 +540,7 @@ def delete_session():
         
         logger.info(f"DELETE SESSION REQUEST: user_id={user_id}, session_id={session_id}, password={'*' * len(password) if password else 'None'}")
         
-        if password != DELETE_PASSWORD:
+        if password != '303103':
             logger.warning(f"Invalid password attempt for user {user_id}")
             return jsonify({'success': False, 'error': 'Incorrect password'}), 403
         

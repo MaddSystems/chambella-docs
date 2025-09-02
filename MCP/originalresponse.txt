@@ -1,0 +1,69 @@
+python test_elasticsearch_tools.py 
+[DEBUG] DEFAULT_MCP_URL = http://localhost:8000
+
+🔍 Starting Elasticsearch MCP Tool Tests
+
+Checking server status...
+✅ Server is healthy - ES version: 2.19.2
+Available tools:
+  - search_by_id_puesto
+  - search_available_vacancies
+  - search_by_ad_id
+
+================================================================================
+TESTING: search_by_ad_id
+Description: Test search by ad_id - Scientific Data Vacancy (ad_id: 120228908704830333)
+================================================================================
+→ Calling tool: search_by_ad_id with params: {"ad_id": "120228908704830333", "detail_level": "summary"}
+✅ Got result in 0.01s
+
+Result Details:
+  Id_Puesto: 151
+  Puesto: Operador de camioneta
+  Nombre_de_vacante: Operador de Camioneta
+  Empresa: GO Logistic
+  disponible: True
+
+Interview Scheduling Information:
+  Dias_para_atender_Entrevistas: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+  Horarios_disponibles_para_Entrevistar: ['11:00-11:30', '11:30-12:00', '12:30-13:00', '12:00-12:30', '13:00-13:30', '16:30-17:00', '13:30-14:00', '14:00-14:30', '14:30-15:00', '16:00-16:30', '17:30-18:00', '17:00-17:30']
+
+================================================================================
+TEST SUMMARY
+================================================================================
+Total tests: 1
+Successful: 1
+Failed: 0
+Success rate: 100.0%
+
+
+{
+  "_index": "vacantes",
+  "_id": "3fn7y5cBzaQpKHl_J29G",
+  "_version": 1,
+  "_score": 0,
+  "_source": {
+    "Empresa": "SNIPER",
+    "Area": "Sniper",
+    "Nombre_de_vacante": "Custodio 1°",
+    "Tipo_de_perfil": "Operativo",
+    "Id_Puesto": "36",
+    "Puesto": "Custodio 1°",
+    "Cantidad_de_vacantes": "6",
+    "Dias_para_atender_Entrevistas": "Viernes, Jueves, Lunes, Martes, Miércoles",
+    "Horarios_disponibles_para_Entrevistar": "15:00-15:30, 15:30-16:00, 16:00-16:30, 16:30-17:00",
+    "Quienes_pueden_entrevistar": "Alvaro",
+    "Tiempo_maximo_de_contratacion": "2 semanas",
+    "Speech_de_confirmacion": "Tu entrevista y contratación serían el día de mañana a las 10:00 A.M... etc.",
+    "fecha_creacion": "2025-07-02T16:32:03Z",
+    "fecha_expiracion": "2025-08-20T21:27:34.000Z"
+  },
+  "fields": {
+    "fecha_expiracion": [
+      "2025-08-20T21:27:34.000Z"
+    ],
+    "fecha_creacion": [
+      "2025-07-02T16:32:03.000Z"
+    ]
+  }
+}
