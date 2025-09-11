@@ -74,7 +74,7 @@ def get_available_vacantes(offset: int = 0, tool_context: ToolContext = None) ->
 
         # Format for display
         formatted_vacantes = [
-            {"job_id": vacante.get("Id_Puesto"), "title": vacante.get("Puesto", "Sin título")}
+            {"job_id": vacante.get("Id_Vacante"), "title": vacante.get("Nombre_de_la_vacante", "Sin título")}
             for vacante in vacantes
         ]
         
@@ -150,13 +150,19 @@ job_discovery_agent = Agent(
 
     **PRESENTACIÓN DE VACANTES:**
     - SOLO después de recibir resultados del MCP, presenta:
-      "¡Hola! Te ayudaré a encontrar una vacante. Aquí tienes las que encontré en tiempo real:
+      "¡Hola! Te ayudaré a encontrar una vacante. Aquí tienes las vacantes disponibles:
       1. [Título real del MCP]
       2. [Título real del MCP]
-      Por favor, dime el número de la vacante que te interesa."
+      Por favor, dime el número de la vacante que te interesa. (selecciona solo una)"
 
     **SELECCIÓN DE USUARIO:**
-    - Cuando el usuario elija una vacante, llama a `select_job()` con los datos REALES del MCP
+    - Cuando el usuario elija una vacante con un solo número, llama a `select_job()` con los datos REALES del MCP.
+    - Si el usuario da una respuesta múltiple o confusa (ej: "la 1 y la 2", "dime de todas"), DEBES responder: "Por favor, selecciona un número correspondiente al menu de vacantes. Si quieres ver el menu principal teclea vacantes" y esperar a que elija una sola opción. NO llames a ninguna herramienta hasta que elija un solo número.
+
+    **TRANSFERENCIA DE AGENTE:**
+    - La transferencia al siguiente agente (`job_info_agent`) se realiza AUTOMÁTICAMENTE dentro de la herramienta `select_job`.
+    - Por lo tanto, NO puedes transferir al agente de información hasta que el usuario haya hecho una selección de vacante ÚNICA y VÁLIDA.
+    - Si el usuario no selecciona una opción del menú, DEBES insistir y volver a presentar el menú. NO llames a `select_job` ni intentes transferir.
 
     **REGLAS ABSOLUTAS:**
     - JAMÁS inventes o uses vacantes del historial

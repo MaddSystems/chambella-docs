@@ -89,34 +89,48 @@ def get_job_details_by_id(job_id: str, tool_context: ToolContext = None) -> dict
 
     try:
         # Añadir log antes de hacer la llamada
-        logger.info(f"Haciendo solicitud a search_by_id_puesto para job_id: {job_id_int}")
+        logger.info(f"Haciendo solicitud a search_by_id_vacante para job_id: {job_id_int}")
         
-        # Use the exact same call as in mcp_elasticsearch_sse.py
+        # Use the new search_by_id_vacante tool
         response = requests.post(
-            f"{MCP_SERVER_URL}/mcp/tool/search_by_id_puesto",
-            json={"id_puesto": str(job_id_int), "detail_level": "detail"},
+            f"{MCP_SERVER_URL}/mcp/tool/search_by_id_vacante",
+            json={"id_vacante": str(job_id_int)},
             timeout=float(MCP_CONNECTION_TIMEOUT)
         )
         # Añadir log de respuesta
-        logger.info(f"Respuesta de search_by_id_puesto: status_code={response.status_code}")
+        logger.info(f"Respuesta de search_by_id_vacante: status_code={response.status_code}")
         response.raise_for_status()
         
         result_data = response.json()
+        # Añadir log para verificar el contenido completo de la respuesta
+        logger.info(f"Respuesta completa de search_by_id_vacante: {result_data}")
+        logger.info(f"Tipo de respuesta: {type(result_data)}")
+        logger.info(f"Claves en la respuesta: {list(result_data.keys()) if isinstance(result_data, dict) else 'No es dict'}")
+        
         # Añadir log para verificar el ID devuelto
-        returned_id = result_data.get("Id_Puesto")
-        logger.info(f"ID devuelto por search_by_id_puesto: {returned_id} (solicitado: {job_id_int})")
+        returned_id = result_data.get("id_vacante") if isinstance(result_data, dict) else None
+        logger.info(f"ID devuelto por search_by_id_vacante: {returned_id} (solicitado: {job_id_int})")
         
         # Handle error response
         if isinstance(result_data, dict) and "error" in result_data:
             logger.error(f"MCP server returned error: {result_data['error']}")
             return {"status": "error", "message": f"Error al obtener detalles de la vacante: {result_data['error']}"}
 
-        # The MCP server returns the job details directly (not in a list)
-        if isinstance(result_data, dict) and "Id_Puesto" in result_data:
-            logger.info(f"Successfully fetched details for job ID {job_id}")
+        # The MCP server returns the text fields directly
+        # Check if we have any fields returned (not just id_vacante)
+        if isinstance(result_data, dict) and len(result_data) > 0 and not "error" in result_data:
+            # Verify that this is the right job by checking id_vacante if present
+            returned_id = result_data.get("id_vacante")
+            if returned_id and str(returned_id) == str(job_id_int):
+                logger.info(f"Successfully fetched details for job ID {job_id} - ID match confirmed")
+            elif returned_id:
+                logger.warning(f"ID mismatch: requested {job_id_int}, got {returned_id}")
+            else:
+                logger.info(f"Successfully fetched details for job ID {job_id} - no id_vacante field to verify")
+            
             return {"status": "success", "job_details": result_data}
         else:
-            logger.warning(f"No job details found for ID {job_id}")
+            logger.warning(f"No job details found for ID {job_id}. Result: {result_data}")
             return {"status": "error", "message": f"No se encontraron detalles para la vacante con ID {job_id}."}
             
     except requests.exceptions.RequestException as e:
@@ -150,30 +164,23 @@ def load_job_info(tool_context: ToolContext) -> dict:
     if job_details_response.get("status") == "success" and job_details_response.get("job_details"):
         job_data = job_details_response["job_details"]
         
-        # Store in current_job_interest for easy access
-        job_title = job_data.get("Puesto", job_data.get("Nombre_de_vacante", f"Vacante ID {current_job_id}"))
-        
+        # Store in current_job_interest for easy access - dynamically preserve all fields
         current_interest = {
-            "id": str(job_data.get("Id_Puesto", current_job_id)),
-            "title": job_title,
-            "company": job_data.get("Empresa"),
-            "location": job_data.get("Ubicacion", job_data.get("Oficinas")),
-            "description": job_data.get("Descripcion_Puesto", job_data.get("Objetivo_del_puesto")),
-            "functions": job_data.get("Funciones"),
-            "responsibilities": job_data.get("Responsabilidades"),
-            "salary_min": job_data.get("Sueldo_Neto_Min"),
-            "salary_max": job_data.get("Sueldo_Max"),
-            "experience_level": job_data.get("Experiencia_minima"),
-            "employment_type": job_data.get("Jornada_Laboral"),
-            "available": job_data.get("disponible", True)
+            "id": str(job_data.get("id_vacante", current_job_id)),
+            "title": job_data.get("nombre_de_la_vacante", f"Vacante ID {current_job_id}"),
         }
+        
+        # Add all other fields dynamically from the MCP response
+        for key, value in job_data.items():
+            if key not in ["id_vacante", "nombre_de_la_vacante"]:  # Skip already handled fields
+                current_interest[key] = value
         
         tool_context.state["current_job_interest"] = current_interest
         
-        logger.info(f"Successfully loaded job info for '{job_title}' (ID: {current_job_id})")
+        logger.info(f"Successfully loaded job info for '{current_interest.get('title', 'Unknown Title')}' (ID: {current_job_id})")
         return {
             "status": "success", 
-            "message": f"Información cargada para la vacante '{job_title}' (ID: {current_job_id}).",
+            "message": f"Información cargada para la vacante '{current_interest.get('title', 'Unknown Title')}' (ID: {current_job_id}).",
             "job_details": job_data
         }
     else:
@@ -251,17 +258,24 @@ job_info_agent = Agent(
     3) Si la pregunta es específica (p. ej. "¿Cuál es el sueldo?") responde ÚNICAMENTE con el dato solicitado en UNA FRASE breve. NO repitas el resumen ni añadas contexto ya dado.
     4) Prohibido repetir: Si ya incluiste un dato en el resumen, NO lo repitas otra vez en la misma respuesta. Evita redundancias y reformulaciones que repitan el mismo valor.
     5) Usa SOLO datos devueltos por load_job_info(). No inventes ni uses historial de conversación ni otras vacantes.
-    6) DESPUÉS de CUALQUIER respuesta finaliza exactamente con: "¿Hazme una pregunta sobre la vacante o escribe 'quiero postularme' para iniciar el proceso de postulación?"
-    7) Si el usuario indica que quiere postularse, PRIMERO llama a check_user_data() y actúa según su resultado (transfer_to_agent a contact_agent o application_agent). No preguntes directamente al usuario si sus datos están registrados.
-    8) Nunca uses emojis, iconos ni variaciones de la pregunta final; mantén calidez mexicana pero la redacción final DEBE ser idéntica.
+    6) DESPUÉS de respuestas informativas, finaliza exactamente con: "¿Qué más deseas saber? Escribe 'postularme' para aplicar o 'vacantes' para ver otras opciones."
+    7) Si el usuario escribe 'vacantes', transfiere inmediatamente a `job_discovery_agent` con `transfer_to_agent("job_discovery_agent")`.
+    8) Si el usuario indica que quiere postularse ('postularme'), PRIMERO llama a check_user_data() y actúa según su resultado:
+       - Si all_complete es true: transfer_to_agent("application_agent") inmediatamente. NO respondas nada más.
+       - Si all_complete es false: transfer_to_agent("contact_agent") inmediatamente. NO respondas nada más.
+    9) Nunca uses emojis, iconos ni variaciones de la pregunta final; mantén calidez mexicana pero la redacción final DEBE ser idéntica.
 
     EJEMPLOS (para el modelo):
     - Usuario: "Cuéntame sobre la vacante"
       -> Respuesta: [UN SOLO RESUMEN de 2–3 frases]. + pregunta final exacta.
     - Usuario: "¿Cuál es el sueldo?"
       -> Respuesta: "El sueldo para esta vacante va de 9000 a 13500 pesos." + pregunta final exacta.
+    - Usuario: "Quiero postularme" o "postularme"
+      -> check_user_data() -> Si completo: transfer_to_agent("application_agent"). Si incompleto: transfer_to_agent("contact_agent").
+    - Usuario: "vacantes"
+      -> transfer_to_agent("job_discovery_agent").
 
-    Comportamiento del modelo: genera UNA respuesta compacta y no repitas valores ya presentados. Si imposible obtener datos, informa y termina con la pregunta final.
+    Comportamiento del modelo: genera UNA respuesta compacta y no repitas valores ya presentados. Si imposible obtener datos, informa y termina con la pregunta final. Al transferir usuarios para postulación, NO añadas preguntas adicionales.
     ''',
     # instruction='''
     # Eres un asistente virtual para información de empleos llamado "Chambella". Hablas en español de manera concisa cálida, amigable y profesional. Tu objetivo es proporcionar información específica sobre la vacante que el usuario está consultando.

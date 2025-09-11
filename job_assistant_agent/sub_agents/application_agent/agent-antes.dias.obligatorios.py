@@ -28,71 +28,6 @@ MCP_CONNECTION_TIMEOUT = 30  # Timeout in seconds
 DIAS_ENTREVISTA = "dias_para_atender_entrevistas"
 HORARIOS_ENTREVISTA = "horarios_disponibles_para_entrevistar"
 
-def is_mexican_holiday(date_obj: datetime) -> bool:
-    """
-    Check if a given date is a Mexican federal holiday.
-    
-    Args:
-        date_obj: datetime object to check
-        
-    Returns:
-        bool: True if it's a holiday, False otherwise
-    """
-    month = date_obj.month
-    day = date_obj.day
-    year = date_obj.year
-    weekday = date_obj.weekday()  # Monday is 0, Sunday is 6
-    
-    # I. El 1o. de enero
-    if month == 1 and day == 1:
-        return True
-    
-    # II. El primer lunes de febrero en conmemoración del 5 de febrero
-    if month == 2 and weekday == 0:  # Monday
-        # Find the first Monday of February
-        first_day = datetime(year, 2, 1)
-        first_monday = first_day + timedelta(days=(7 - first_day.weekday()) % 7)
-        if date_obj.date() == first_monday.date():
-            return True
-    
-    # III. El tercer lunes de marzo en conmemoración del 21 de marzo
-    if month == 3 and weekday == 0:  # Monday
-        # Find the third Monday of March
-        first_day = datetime(year, 3, 1)
-        first_monday = first_day + timedelta(days=(7 - first_day.weekday()) % 7)
-        third_monday = first_monday + timedelta(days=14)  # Add 2 weeks
-        if date_obj.date() == third_monday.date():
-            return True
-    
-    # IV. El 1o. de mayo
-    if month == 5 and day == 1:
-        return True
-    
-    # V. El 16 de septiembre
-    if month == 9 and day == 16:
-        return True
-    
-    # VI. El tercer lunes de noviembre en conmemoración del 20 de noviembre
-    if month == 11 and weekday == 0:  # Monday
-        # Find the third Monday of November
-        first_day = datetime(year, 11, 1)
-        first_monday = first_day + timedelta(days=(7 - first_day.weekday()) % 7)
-        third_monday = first_monday + timedelta(days=14)  # Add 2 weeks
-        if date_obj.date() == third_monday.date():
-            return True
-    
-    # VII. El 1o. de octubre de cada seis años (años de cambio presidencial)
-    # Los años de cambio presidencial en México son: 2024, 2030, 2036, etc.
-    presidential_years = [2024, 2030, 2036, 2042, 2048, 2054, 2060]
-    if month == 10 and day == 1 and year in presidential_years:
-        return True
-    
-    # VIII. El 25 de diciembre
-    if month == 12 and day == 25:
-        return True
-    
-    return False
-
 def get_job_details_by_id(job_id: str, tool_context: ToolContext = None) -> dict:
     """Get detailed information about a specific job by ID using MCP server."""
     # logger.debug(f"get_job_details_by_id called with ID: {job_id}")
@@ -242,9 +177,7 @@ def get_available_interview_slots(tool_context: ToolContext) -> dict:
             # Check for the next 14 days, starting from tomorrow
             for i in range(1, 15):
                 current_eval_date = today + timedelta(days=i)
-                # Check if the day is in the allowed weekdays AND not a Mexican holiday
-                if (current_eval_date.weekday() in allowed_weekdays_num and 
-                    not is_mexican_holiday(current_eval_date)):
+                if current_eval_date.weekday() in allowed_weekdays_num:
                     date_str = current_eval_date.strftime("%Y-%m-%d")
                     
                     # English day name as fallback
@@ -255,9 +188,6 @@ def get_available_interview_slots(tool_context: ToolContext) -> dict:
                         "date_str": date_str,
                         "display_text": f"{date_str} ({day_name_es})"
                     })
-                elif is_mexican_holiday(current_eval_date):
-                    # Log when we skip a holiday for debugging
-                    logger.info(f"Skipping Mexican holiday: {current_eval_date.strftime('%Y-%m-%d')}")
             
             if not processed_dates:
                 return {
@@ -275,12 +205,6 @@ def get_available_interview_slots(tool_context: ToolContext) -> dict:
                 if date_str:
                     try:
                         date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                        
-                        # Skip Mexican holidays
-                        if is_mexican_holiday(date_obj):
-                            logger.info(f"Skipping Mexican holiday from interview_slots: {date_str}")
-                            continue
-                        
                         day_name_en_map = {0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves", 4: "Viernes", 5: "Sábado", 6: "Domingo"}
                         day_name_es = day_name_en_map[date_obj.weekday()]
                         
@@ -631,7 +555,7 @@ def apply_to_job(tool_context: ToolContext) -> dict:
     
     return {
         "status": "success",
-        "message": f"¡Excelente! Te has postulado a la vacante '{job_title}' ({job_company}) con una entrevista programada para el {formatted_date_user} a las {interview_time.split('-')[0].strip()}.",
+        "message": f"¡Excelente! Te has postulado a la vacante '{job_title}' ({job_company}) con una entrevista programada para el {formatted_date_user} a las {interview_time.split('-')[0].strip()}. Para completar tu postulación, por favor llena el formulario en {application_form_link}",
         "job_id": job_id_to_apply,
         "job_title": job_title,
         "interview_datetime": interview_datetime,

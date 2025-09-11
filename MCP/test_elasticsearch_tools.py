@@ -126,7 +126,7 @@ def test_search_tool(mcp_url: str, tool_name: str, params: Dict[str, Any], descr
                 print_colored("\nFirst result:", Colors.BLUE, True)
                 
                 # Print important fields if they exist
-                important_fields = ["id_perfil_de_puesto", "Puesto", "Nombre_de_vacante", "Empresa", 
+                important_fields = ["id_vacante", "Nombre_de_la_vacante", "Nombre_de_vacante", "Empresa", 
                                    "disponible", "Objetivo_del_puesto"]
                 for field in important_fields:
                     if field in first_result:
@@ -159,26 +159,32 @@ def test_search_tool(mcp_url: str, tool_name: str, params: Dict[str, Any], descr
         elif isinstance(result, dict):
             print_colored(f"✅ Got result in {elapsed:.2f}s", Colors.GREEN, True)
             
-            # Print important fields if they exist
-            important_fields = ["id_perfil_de_puesto", "Puesto", "Nombre_de_vacante", "Empresa", 
-                              "disponible", "Objetivo_del_puesto"]
-            print_colored("\nResult Details:", Colors.BLUE, True)
-            for field in important_fields:
-                if field in result:
+            # Special handling for search_by_id_vacante - show ALL fields
+            if tool_name == "search_by_id_vacante":
+                print_colored(f"\nAll Fields Returned ({len(result)} total):", Colors.BLUE, True)
+                for field in sorted(result.keys()):
                     print_colored(f"  {field}: {result[field]}", Colors.GREEN)
-            
-            # Check for interview scheduling information
-            interview_fields = [DIAS_ENTREVISTA, 
-                               HORARIOS_ENTREVISTA,
-                               "Tiempo_maximo_de_contratacion"]
-            
-            found_interview_info = False
-            for field in interview_fields:
-                if field in result and result[field]:
-                    if not found_interview_info:
-                        print_colored("\nInterview Scheduling Information:", Colors.BLUE, True)
-                        found_interview_info = True
-                    print_colored(f"  {field}: {result[field]}", Colors.CYAN)
+            else:
+                # Print important fields if they exist
+                important_fields = ["id_vacante", "Nombre_de_la_vacante", "Nombre_de_vacante", "Empresa", 
+                                  "disponible", "Objetivo_del_puesto"]
+                print_colored("\nResult Details:", Colors.BLUE, True)
+                for field in important_fields:
+                    if field in result:
+                        print_colored(f"  {field}: {result[field]}", Colors.GREEN)
+                
+                # Check for interview scheduling information
+                interview_fields = [DIAS_ENTREVISTA, 
+                                   HORARIOS_ENTREVISTA,
+                                   "Tiempo_maximo_de_contratacion"]
+                
+                found_interview_info = False
+                for field in interview_fields:
+                    if field in result and result[field]:
+                        if not found_interview_info:
+                            print_colored("\nInterview Scheduling Information:", Colors.BLUE, True)
+                            found_interview_info = True
+                        print_colored(f"  {field}: {result[field]}", Colors.CYAN)
             
             # For detail level requests, show more comprehensive information
             if params.get("detail_level") == "detail":
@@ -267,18 +273,18 @@ def run_all_tests(mcp_url: str) -> None:
         #     "description": "Test fallback behavior with empty params"
         # },
         
-        # Test search_by_id_puesto with known ID (custodio)
+        # Test search_by_id_vacante with known ID (Operador de camioneta)
         {
-            "tool": "search_by_id_puesto",
-            "params": {"id_puesto": "57", "detail_level": "detail"},
-            "description": "Test search by ID - detailed view (Custodio)"
+            "tool": "search_by_id_vacante",
+            "params": {"id_vacante": "42"},
+            "description": "Test search by ID - Operador de camioneta (id_vacante: 42)"
         },
         
-        # # Test search_by_id_puesto with known ID (Application Manager)
+        # # Test search_by_id_vacante with another known ID
         # {
-        #     "tool": "search_by_id_puesto",
-        #     "params": {"id_puesto": "11"},
-        #     "description": "Test search by ID - summary view (Application Manager)"
+        #     "tool": "search_by_id_vacante",
+        #     "params": {"id_vacante": "11"},
+        #     "description": "Test search by ID - another vacancy"
         # },
         
         # # Test get_interview_schedule
@@ -707,17 +713,17 @@ def run_all_tests(mcp_url: str) -> None:
             "description": "Test pagination - first page with 1 result"
         },
         
-        # Test search_by_id_puesto with known ID
+        # Test search_by_id_vacante with known ID
         {
-            "tool": "search_by_id_puesto",
-            "params": {"id_puesto": "57", "detail_level": "detail"},
-            "description": "Test search by ID - detailed view (Custodio)"
+            "tool": "search_by_id_vacante",
+            "params": {"id_vacante": "42"},
+            "description": "Test search by ID - Operador de camioneta (id_vacante: 42)"
         },
 
         {
             "tool": "search_by_ad_id",
-            "params": {"ad_id": "1", "detail_level": "summary"},
-            "description": "Test search by ad_id - Scientific Data Vacancy (ad_id: 1)"
+            "params": {"ad_id": "120228908704830333", "detail_level": "summary"},
+            "description": "Test search by ad_id -  Operador de Camioneta (ad_id: 120228908704830333)"
         }
         
     ]

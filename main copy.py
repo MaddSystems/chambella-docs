@@ -373,25 +373,18 @@ async def webhook_messenger():
                         if search_value:
                             job_info_from_referral = await search_by_ad_id(search_value)
 
-                    # ACTUALIZAR SESIÓN SI SE ENCONTRÓ INFO DE VACANTE
-                    if job_info_from_referral and job_info_from_referral.get('Id_Vacante'):
-                        job_id = job_info_from_referral.get('Id_Vacante')  # Cambio: usar Id_Vacante en vez de Id_Puesto
-                        job_title = job_info_from_referral.get('Nombre_de_la_vacante') or job_info_from_referral.get('Puesto')
+                    if job_info_from_referral and job_info_from_referral.get('Id_Puesto'):
+                        job_id = job_info_from_referral.get('Id_Puesto')
+                        job_title = job_info_from_referral.get('Nombre_de_vacante') or job_info_from_referral.get('Puesto')
                         
                         await update_session_with_job_info(
                             user_id=sender_id,
                             channel="messenger",
-                            job_id=job_id,  # Guardará 42 como current_job_id
-                            job_title=job_title,  # "Operador de camioneta"
-                            ad_id_or_ref=search_value  # "120228908704830333" como current_ad_id
+                            job_id=job_id,
+                            job_title=job_title,
+                            ad_id_or_ref=search_value
                         )
-                        
-                        # OPCIONAL: Enviar mensaje de bienvenida si no hay texto
-                        if not message_text:
-                            welcome_message = f"¡Hola! Veo que estás interesado en el puesto de {job_title}. ¿En qué puedo ayudarte?"
-                            await send_message_async("messenger", sender_id, welcome_message)
 
-                    # PROCESAR MENSAJE DE TEXTO SI EXISTE
                     if message_text:
                         await process_message(
                             sender_id=sender_id,
@@ -399,7 +392,7 @@ async def webhook_messenger():
                             channel="messenger",
                         )
                     else:
-                        logger.info(f"Processed referral for {sender_id}, no text message to process.")
+                        logger.info(f"Received event without text for {sender_id} (e.g., referral). No message processed.")
 
             return "EVENT_RECEIVED", 200
         except Exception as e:

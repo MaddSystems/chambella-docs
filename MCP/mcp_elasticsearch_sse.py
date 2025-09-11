@@ -20,7 +20,7 @@ import re
 import calendar
 
 # Global variable for Id_Puesto field name (internal use)
-ID_PUESTO = "id_perfil_de_puesto"
+ID_PUESTO = "id_vacante"
 
 # Global variable for interview days field name (internal use)
 DIAS_ENTREVISTA = "dias_para_atender_entrevistas"
@@ -29,7 +29,7 @@ DIAS_ENTREVISTA = "dias_para_atender_entrevistas"
 HORARIOS_ENTREVISTA = "horarios_disponibles_para_entrevistar"
 
 # Global variables for other standardized field names (internal use)
-PUESTO = "puesto"
+PUESTO = "nombre_de_la_vacante"
 NOMBRE_VACANTE = "nombre_de_vacante"
 EMPRESA = "empresa"
 DEPARTAMENTO = "departamento"
@@ -37,9 +37,8 @@ AREA = "area"
 
 # Field mapping for backward compatibility (new_name -> old_name for API responses)
 FIELD_MAPPING_RESPONSE = {
-    "id_perfil_de_puesto": "Id_Puesto",
-    "puesto": "Puesto",
-    "nombre_de_vacante": "Nombre_de_vacante",
+    "id_vacante": "Id_Vacante",
+    "nombre_de_la_vacante": "Nombre_de_la_vacante",
     "empresa": "Empresa",
     "departamento": "Departamento",
     "area": "Area",
@@ -49,9 +48,8 @@ FIELD_MAPPING_RESPONSE = {
 
 # Field mapping for querying (old_name -> new_name for internal queries)
 FIELD_MAPPING_QUERY = {
-    "Id_Puesto": "id_perfil_de_puesto",
-    "Puesto": "puesto", 
-    "Nombre_de_vacante": "nombre_de_vacante",
+    "Id_Vacante": "id_vacante",
+    "Nombre_de_la_vacante": "nombre_de_la_vacante",
     "Empresa": "empresa",
     "Departamento": "departamento",
     "Area": "area",
@@ -177,7 +175,7 @@ def get_schema() -> str:
 @mcp.tool()
 def search_by_ad_id(ad_id: str, ctx: Context, detail_level: str = "summary") -> str:
     """
-    Search for a vacancy by ad_id and return its associated puesto.
+    Search for a vacancy by ad_id and return its associated nombre_de_la_vacante.
     """
     logger.debug(f"Searching by ad_id: {ad_id}, detail_level: {detail_level}")
     try:
@@ -207,7 +205,7 @@ def search_by_ad_id(ad_id: str, ctx: Context, detail_level: str = "summary") -> 
         formatted_result = format_document(vacancy, detail_level)
         logger.info(vacancy)
         logger.info(detail_level)
-        logger.info(f"Found vacancy with ad_id {ad_id}, id_perfil_de_puesto: {formatted_result.get(ID_PUESTO, 'N/A')}")
+        logger.info(f"Found vacancy with ad_id {ad_id}, id_vacante: {formatted_result.get(ID_PUESTO, 'N/A')}")
         logger.info(formatted_result)
         return json.dumps(formatted_result, cls=EsJSONEncoder)
         
@@ -415,10 +413,10 @@ def perform_field_search(field: str, value: str, es_client: OpenSearch, index: s
         logger.error(f"Error in perform_field_search for {field}={value}: {e}")
         return []
 
-# Helper function to get all id_perfil_de_puesto values from vacantefinal
+# Helper function to get all id_vacante values from vacantefinal
 def get_available_id_puestos(es_client: OpenSearch) -> List[str]:
     """
-    Get a list of id_perfil_de_puesto values from all vacancies.
+    Get a list of id_vacante values from all vacancies.
     """
     try:
         query = {
@@ -446,7 +444,7 @@ def get_available_id_puestos(es_client: OpenSearch) -> List[str]:
         return id_puestos
         
     except Exception as e:
-        logger.error(f"Error getting id_perfil_de_puesto values: {e}")
+        logger.error(f"Error getting id_vacante values: {e}")
         return []
 
 # Paginate results from puestos index
@@ -462,10 +460,10 @@ def paginated_vacantes_from_puestos(
     """
     try:
         available_id_puestos = get_available_id_puestos(es)
-        logger.debug(f"Available id_perfil_de_puesto from vacantefinal: {available_id_puestos}")
+        logger.debug(f"Available id_vacante from vacantefinal: {available_id_puestos}")
         
         if not available_id_puestos:
-            logger.warning("No id_perfil_de_puesto found in vacantefinal")
+            logger.warning("No id_vacante found in vacantefinal")
             return []
         
         if "must" not in puestos_query["query"]["bool"]:
@@ -498,142 +496,51 @@ def paginated_vacantes_from_puestos(
         return []
 
 @mcp.tool()
-def search_by_id_puesto(id_puesto: str, ctx: Context, detail_level: str = "summary") -> str:
+def search_by_id_vacante(id_vacante: str, ctx: Context) -> str:
     """
-    Search for job/vacancy by id_perfil_de_puesto and return detailed information from both vacantefinal and puestos.
+    Search for a vacancy by id_vacante in vacantefinal index and return all text fields from the source document.
     """
-    logger.info(f"SEARCH REQUEST: search_by_id_puesto called with ID: {id_puesto}, detail_level: {detail_level}")
+    logger.info(f"SEARCH REQUEST: search_by_id_vacante called with ID: {id_vacante}")
     try:
         es = ctx.request_context.lifespan_context.es_client
         
-        logger.info(f"INPUT VALIDATION: Requested job ID={id_puesto}, type={type(id_puesto)}")
+        logger.info(f"INPUT VALIDATION: Requested vacancy ID={id_vacante}, type={type(id_vacante)}")
         
-        vacantes_query = {
+        query = {
             "size": 1,
             "query": {
-                "bool": {
-                    "should": [
-                        {"match": {ID_PUESTO: id_puesto}},
-                        {"match": {"Id_Puesto": id_puesto}}
-                    ],
-                    "minimum_should_match": 1
+                "term": {
+                    "id_vacante": id_vacante
                 }
             }
         }
         
-        logger.info(f"QUERY: vacantes_query={json.dumps(vacantes_query)}")
-        vacantes_response = es.search(
+        logger.info(f"QUERY: {json.dumps(query)}")
+        response = es.search(
             index="vacantefinal",
-            body=vacantes_query
+            body=query
         )
         
-        logger.info(f"RESPONSE: vacantes search found {vacantes_response['hits']['total']['value']} results")
+        logger.info(f"RESPONSE: Found {response['hits']['total']['value']} results")
         
-        puestos_query = {
-            "size": 1,
-            "query": {
-                "bool": {
-                    "should": [
-                        {"match": {ID_PUESTO: id_puesto}},
-                        {"match": {"Id_Puesto": id_puesto}}
-                    ],
-                    "minimum_should_match": 1
-                }
-            }
-        }
+        if response["hits"]["total"]["value"] == 0:
+            logger.warning(f"NO DATA: No vacancy found with id_vacante {id_vacante}")
+            return json.dumps({"error": f"No vacancy found with id_vacante: {id_vacante}"})
         
-        logger.info(f"QUERY: puestos_query={json.dumps(puestos_query)}")
-        puestos_response = es.search(
-            index="puestos",
-            body=puestos_query
-        )
+        # Get the source document
+        source = response["hits"]["hits"][0]["_source"]
         
-        logger.info(f"RESPONSE: puestos search found {puestos_response['hits']['total']['value']} results")
+        # Filter to return only text fields (strings)
+        text_fields = {}
+        for key, value in source.items():
+            if isinstance(value, str):
+                text_fields[key] = value
         
-        result = {ID_PUESTO: id_puesto}
-        
-        if puestos_response["hits"]["total"]["value"] > 0:
-            puesto_data = puestos_response["hits"]["hits"][0]["_source"]
-            puesto_id = puesto_data.get(ID_PUESTO) or puesto_data.get("Id_Puesto")
-            logger.info(f"DATA CHECK: Found puesto data with ID={puesto_id}, requested ID={id_puesto}")
-            
-            if puesto_id != id_puesto:
-                logger.warning(f"ID MISMATCH: Requested ID={id_puesto} but found ID={puesto_id} in puestos")
-            
-            result.update(puesto_data)
-            result["_id"] = puestos_response["hits"]["hits"][0]["_id"]
-            result["_index"] = "puestos"
-        
-        vacancy_available = False
-        if vacantes_response["hits"]["total"]["value"] > 0:
-            vacante_data = vacantes_response["hits"]["hits"][0]["_source"]
-            vacante_id = vacante_data.get(ID_PUESTO) or vacante_data.get("Id_Puesto")
-            logger.info(f"DATA CHECK: Found vacante data with ID={vacante_id}, requested ID={id_puesto}")
-            
-            if vacante_id != id_puesto:
-                logger.warning(f"ID MISMATCH: Requested ID={id_puesto} but found ID={vacante_id} in vacantes")
-            
-            for key, value in vacante_data.items():
-                if value and value != "-" and value != "":
-                    result[key] = value
-            
-            result["vacante_id"] = vacantes_response["hits"]["hits"][0]["_id"]
-            result["vacante_index"] = "vacantefinal"
-            vacancy_available = True
-        
-        if len(result) <= 1:
-            logger.warning(f"NO DATA: No data found for id_perfil_de_puesto {id_puesto}")
-            return json.dumps({"error": f"No job found with id_perfil_de_puesto: {id_puesto}"})
-        
-        result["disponible"] = vacancy_available and is_vacancy_available(result)
-        
-        final_id = result.get(ID_PUESTO)
-        if final_id != id_puesto:
-            logger.error(f"CRITICAL ERROR: Final result has wrong ID! Requested={id_puesto}, Result={final_id}")
-        
-        logger.info(f"RESULT PREVIEW: ID={final_id}, Title={result.get('Puesto')}, Salary={result.get('Sueldo_Neto_Min')}-{result.get('Sueldo_Max')}")
-        
-        if detail_level == "detail":
-            exclude_fields = [
-                "_score", "Quienes_pueden_entrevistar", "Speech_de_confirmacion", "fecha_creacion"
-            ]
-            
-            detailed_result = {}
-            for key, value in result.items():
-                if key not in exclude_fields:
-                    detailed_result[key] = value
-            
-            logger.info(f"SUCCESS: Returning comprehensive details for id_perfil_de_puesto {id_puesto}")
-            return json.dumps(detailed_result, cls=EsJSONEncoder)
-        
-        else:
-            important_fields = [
-                "id_perfil_de_puesto", "Puesto", "Nombre_de_vacante", "Empresa", "Departamento", "Area",
-                "Objetivo_del_puesto", "Sueldo_Neto_Min", "Sueldo_Max", 
-                "Lugar", "Oficinas", "Tipo_de_contratacion", "Jornada_Laboral",
-                DIAS_ENTREVISTA, HORARIOS_ENTREVISTA,
-                "Tiempo_maximo_de_contratacion", "Formacion"
-            ]
-            
-            formatted_result = {}
-            for field in important_fields:
-                if field in result and result[field] and result[field] != "-":
-                    formatted_result[field] = result[field]
-            
-            core_fields = ["id_perfil_de_puesto", "disponible", "_id", "_index"]
-            for field in core_fields:
-                if field in result:
-                    formatted_result[field] = result[field]
-            
-            if "vacante_id" in result:
-                formatted_result["vacante_id"] = result["vacante_id"]
-                formatted_result["vacante_index"] = result["vacante_index"]
-            
-            logger.info(f"SUCCESS: Returning summary details for Id_Puesto {id_puesto}")
-            return json.dumps(formatted_result, cls=EsJSONEncoder)
+        logger.info(f"SUCCESS: Returning text fields for id_vacante {id_vacante}")
+        return json.dumps(text_fields, cls=EsJSONEncoder)
         
     except Exception as e:
-        error_msg = f"Error searching by Id_Puesto: {str(e)}"
+        error_msg = f"Error searching by id_vacante: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return json.dumps({"error": error_msg})
 
@@ -714,7 +621,7 @@ async def mcp_handler(request: Request):
                 )
                 tools = {
                     "search_available_vacancies": search_available_vacancies,
-                    "search_by_id_puesto": search_by_id_puesto,
+                    "search_by_id_vacante": search_by_id_vacante,
                     "search_by_ad_id": search_by_ad_id,
                 }
                 
@@ -778,7 +685,7 @@ async def status_handler(request: Request):
                 "es_version": es_version,
                 "client_info": str(type(es)),
                 "available_tools": [
-                    "search_by_id_puesto",
+                    "search_by_id_vacante",
                     "search_available_vacancies",
                     "search_by_ad_id",
                 ]

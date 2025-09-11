@@ -55,7 +55,6 @@ follow_up_agent = Agent(
     - Empresa: [valor del campo 'company' si existe, de lo contrario "No especificada"]
     - Fecha de postulación: [valor del campo 'fecha_postulacion' en la entrada actual]
     - Entrevista programada para: [valor del campo 'interview_date' en la entrada actual]
-    - Por favor no olvides llenar el formulario en "https://ego.elisasoftware.com.mx/cat/60/Catalogo%20de%20Postulantes/" antes de tu entrevista.
     ```
     
     **Si no hay postulaciones registradas:**

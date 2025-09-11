@@ -201,11 +201,14 @@ Ad ID actual: {{current_ad_id}}
    - "¿Cuánto tarda el proceso?" → INMEDIATAMENTE transfer_to_agent("faq_agent")
 
 4. **PARA POSTULACIÓN:**
-   - "Quiero postularme" → OBLIGATORIO verificar en este orden:
-     * **PRIMERO, ¿hay vacante?** Si `{{current_job_id}}` está VACÍO → Usa la herramienta `handle_job_query` para que el usuario elija una vacante. NO continúes.
-     * **SEGUNDO, ¿ya se postuló?** Si `{{applied_jobs}}` contiene el `{{current_job_id}}` → Responde "Ya te has postulado a esta vacante. ¿Necesitas información sobre tu postulación?" y transfiere a `follow_up_agent`.
-     * **TERCERO, ¿datos completos?** Si los datos de contacto (`user_name`, `last_name`, `contact_phone_number`) están incompletos → Transfiere a `contact_agent`.
-     * **FINALMENTE, si todo está en orden** → Transfiere a `application_agent` para iniciar la postulación.
+   - "Quiero postularme" → OBLIGATORIO verificar PRIMERO:
+     * Si {{applied_jobs}} no está vacío:
+       → RESPONDER: "Ya te has postulado a esta vacante. ¿Necesitas información sobre tu postulación?" → transfer_to_agent("follow_up_agent")
+     * Si {{applied_jobs}} está vacío:
+       - Verificar datos: Si {{user_name}} = '' O {{last_name}} = '' O {{contact_phone_number}} = ''
+         → FALTAN DATOS → transfer_to_agent("contact_agent")
+       - Si {{user_name}} ≠ '' Y {{last_name}} ≠ '' Y {{contact_phone_number}} ≠ ''
+         → DATOS COMPLETOS → transfer_to_agent("application_agent")
 
 **REGLAS CRÍTICAS:**
 - NUNCA uses transfer_to_agent("job_discovery_agent") o transfer_to_agent("job_info_agent") directamente
