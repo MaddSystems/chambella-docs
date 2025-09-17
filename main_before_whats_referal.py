@@ -45,24 +45,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ADDED: helper to mark critical debug logs when --v 3
-def log_critical_debug(message: str):
-    if VERBOSE_LEVEL >= 3:
-        logger.info(f"[CRITICAL DEBUG] {message}")
-    else:
-        logger.debug(message)
-
-# ADDED: single-line JSON helper for grep-friendly logs
-def log_critical_debug_json(obj, prefix: str = ""):
-    try:
-        msg = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
-    except Exception as e:
-        msg = f"<<non-serializable: {e}>>"
-    if prefix:
-        log_critical_debug(f"{prefix}: {msg}")
-    else:
-        log_critical_debug(msg)
-
 # ===== PART 1: Initialize Persistent Session Service =====
 db_url = "sqlite:///./chambella_agent_data.db"
 session_service = DatabaseSessionService(
@@ -440,8 +422,7 @@ async def webhook_whatsapp():
 
     elif request.method == "POST":
         data = request.json
-        # CHANGED: log as a single line so grep shows the whole payload
-        log_critical_debug_json(data, "Received WhatsApp POST request")
+        logger.info(f"Received WhatsApp POST request: {json.dumps(data, indent=2)}")
         try:
             for entry in data.get("entry", []):
                 for change in entry.get("changes", []):

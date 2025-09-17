@@ -1,0 +1,182 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+  <div class="d-flex align-items-center mb-3">
+    <h3 class="me-3">Vacantes ({{ index_name or 'vacantefinal' }})</h3>
+    <div class="ms-auto" style="max-width: 360px;">
+      <input id="q" class="form-control" placeholder="Buscar por texto...">
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle" id="tbl">
+      <thead class="table-light">
+        <tr>
+          <th>_id</th>
+          <th>id_vacante</th>
+          <th>Vacante</th>
+          <th>Empresa</th>
+          <th>Creación</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <p class="text-muted small">Tip: usa el buscador superior o el de DataTables para filtrar rápidamente.</p>
+
+  <!-- Edit Modal -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar documento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="docMeta" class="mb-3 text-secondary small"></div>
+          <form id="editForm">
+            <div id="fieldsContainer" class="row g-3"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <div id="saveStatus" class="me-auto small text-muted"></div>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button id="saveBtn" type="button" class="btn btn-primary">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let currentDocId = null;
+  const editModalEl = document.getElementById('editModal');
+  const editModal = new bootstrap.Modal(editModalEl);
+  const fieldsContainer = document.getElementById('fieldsContainer');
+  const saveBtn = document.getElementById('saveBtn');
+  const saveStatus = document.getElementById('saveStatus');
+  const docMeta = document.getElementById('docMeta');
+
+  function fmtDate(s) {
+    try {
+      const d = new Date(s);
+      return isNaN(d) ? (s || '') : d.toLocaleString();
+    } catch (_) {
+      return s || '';
+    }
+  }
+
+  async function loadData(q, limit) {
+    const url = new URL('/api/vacantes', window.location.origin);
+    url.searchParams.set('limit', limit);
+    if (q) url.searchParams.set('q', q);
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('No se pudo cargar la lista');
+    return await r.json();
+  }
+
+  function renderTable(items) {
+    const tb = document.querySelector('#tbl tbody');
+    tb.innerHTML = '';
+    (items || []).forEach(it => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="kv truncate" title="${it._id || ''}">${it._id || ''}</td>
+        <td class="kv">${it.id_vacante || ''}</td>
+        <td class="truncate" title="${it.nombre_de_la_vacante || ''}">${it.nombre_de_la_vacante || ''}</td>
+        <td>${it.empresa || ''}</td>
+        <td>${fmtDate(it.fecha_creacion)}</td>
+        <td><button class="btn btn-sm btn-primary btn-edit" data-id="${it._id}">Editar</button></td>
+      `;
+      tb.appendChild(tr);
+    });
+  }
+
+  async function openEdit(docId) {
+    currentDocId = docId;
+    saveStatus.textContent = '';
+    fieldsContainer.innerHTML = '';
+    docMeta.textContent = 'Cargando...';
+
+    const resp = await fetch(`/api/vacantes/${encodeURIComponent(docId)}`);
+    if (!resp.ok) {
+      docMeta.textContent = 'Error al cargar el documento.';
+      return;
+    }
+    const data = await resp.json();
+    docMeta.textContent = `_id: ${data._id} | _index: ${data._index}`;
+
+    const src = data.source || {};
+    const entries = Object.entries(src).sort(([a], [b]) => a.localeCompare(b));
+    for (const [key, val] of entries) {
+      const safeVal = (val === null || val === undefined) ? '' : String(val);
+      const id = `fld_${key}`;
+      const isLong = safeVal.length > 80 || safeVal.includes('\n');
+      const col = document.createElement('div');
+      col.className = 'col-12';
+      col.innerHTML = isLong ? `
+        <div class="form-floating">
+          <textarea class="form-control" id="${id}" data-key="${key}" style="height: 120px">${safeVal}</textarea>
+          <label for="${id}">${key}</label>
+        </div>
+      ` : `
+        <div class="form-floating">
+          <input type="text" class="form-control" id="${id}" data-key="${key}" value="${safeVal}">
+          <label for="${id}">${key}</label>
+        </div>
+      `;
+      fieldsContainer.appendChild(col);
+    }
+    editModal.show();
+  }
+
+  async function saveEdit() {
+    if (!currentDocId) return;
+    saveStatus.textContent = 'Guardando...';
+    const inputs = fieldsContainer.querySelectorAll('[data-key]');
+    const fields = {};
+    inputs.forEach(inp => { fields[inp.getAttribute('data-key')] = inp.value; });
+    const resp = await fetch(`/api/vacantes/${encodeURIComponent(currentDocId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields })
+    });
+    const res = await resp.json();
+    if (resp.ok) {
+      saveStatus.textContent = 'Cambios guardados.';
+      const q = document.getElementById('q').value.trim();
+      await loadData(q, 200).then(data => renderTable(data.items));
+      setTimeout(() => editModal.hide(), 600);
+    } else {
+      saveStatus.textContent = `Error: ${res.error || 'no se pudo guardar'}`;
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-edit');
+    if (btn) { openEdit(btn.getAttribute('data-id')); }
+  });
+  saveBtn.addEventListener('click', saveEdit);
+  document.getElementById('q').addEventListener('input', e => {
+    loadData(e.target.value.trim(), 200).then(data => renderTable(data.items)).catch(e => {
+      console.error(e);
+      alert('No se pudo cargar la lista de vacantes.');
+    });
+  });
+
+  (async () => {
+    try {
+      const data = await loadData('', 200);
+      renderTable(data.items);
+    } catch (e) {
+      console.error(e);
+      alert('No se pudo cargar la lista de vacantes.');
+    }
+  })();
+</script>
+{% endblock %}

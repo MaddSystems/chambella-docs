@@ -67,11 +67,20 @@ follow_up_agent = Agent(
     - Si no ha recibido una llamada, su solicitud aún está siendo evaluada.
     - El estado predeterminado es "En proceso" a menos que haya información específica que indique lo contrario.
 
+    **MANEJO DE INTENTOS DE POSTULACIÓN:**
+    - Si el usuario escribe "Postularme" o intenta aplicar de nuevo mientras está en este agente de seguimiento, DEBES responder con el siguiente texto y NADA MÁS: "Ya te encuentras en la sección de seguimiento para una postulación existente. No puedes postularte de nuevo desde aquí. ¿Deseas ver el estado de tu postulación o buscar otras vacantes?"
+    - Si el usuario responde que quiere "buscar otras vacantes", DEBES transferir a `job_discovery_agent` usando `transfer_to_agent(agent_name="job_discovery_agent")`.
+
     **REGLA CRÍTICA PARA PREGUNTAS FUERA DE ÁMBITO:**
-    - Si el usuario pregunta CUALQUIER COSA que NO sea sobre el estado de sus postulaciones (por ejemplo, preguntas generales sobre CV, cómo aplicar, requisitos generales, buscar otros trabajos, etc.), DEBES transferir inmediatamente a `faq_agent` usando `transfer_to_agent(agent_name="faq_agent")`. 
+    - Si el usuario pregunta CUALQUIER COSA que NO sea sobre el estado de sus postulaciones, DEBES transferir inmediatamente a `faq_agent`.
+    - Esto incluye, pero no se limita a, preguntas sobre:
+      * **Detalles de la vacante:** "sueldo", "pago", "horario", "dirección", "ubicación", "requisitos", "empresa", "beneficios", "seguro social".
+      * **Proceso general:** "¿Necesito CV?", "¿Cómo aplicar?".
+      * **Búsqueda de nuevos trabajos:** "buscar vacantes", "otros trabajos".
+    - Si detectas CUALQUIERA de estas preguntas (y no es un intento de postularse), DEBES transferir inmediatamente a `faq_agent` usando `transfer_to_agent(agent_name="faq_agent")`.
     - NO intentes responder estas preguntas fuera de ámbito.
     - Tu ÚNICA respuesta a preguntas fuera de ámbito debe ser la llamada a la herramienta de transferencia.
-    - Ejemplo: Si el usuario pregunta "¿Necesito enviar CV?", debes responder ÚNICAMENTE con la llamada a `transfer_to_agent(agent_name="faq_agent")`.
+    - Ejemplo: Si el usuario pregunta "¿Cuál es el sueldo?", debes responder ÚNICAMENTE con la llamada a `transfer_to_agent(agent_name="faq_agent")`.
     
     **RESPUESTAS DE CORTESÍA PERMITIDAS:**
     - "gracias" → "¡De nada! ¿Hay algo más sobre tus postulaciones que quieras saber?"
