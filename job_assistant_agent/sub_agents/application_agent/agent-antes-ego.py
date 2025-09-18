@@ -3,7 +3,6 @@ import json
 import calendar
 import logging
 import requests
-import os
 
 from google.adk.agents import Agent
 from google.adk.tools.tool_context import ToolContext
@@ -14,6 +13,7 @@ from config import APPLICATION_AGENT_MODEL
 logger = logging.getLogger(__name__)
 
 # MCP Configuration Constants
+import os
 MCP_PORT = os.getenv("MCP_PORT")
 if not MCP_PORT:
     raise RuntimeError("MCP_PORT environment variable is required for MCP_SERVER_URL")
@@ -23,11 +23,6 @@ except ValueError:
     raise RuntimeError(f"Invalid MCP_PORT value: {MCP_PORT}")
 MCP_SERVER_URL = f"http://localhost:{MCP_PORT_INT}"  # Dynamic URL from env
 MCP_CONNECTION_TIMEOUT = 30  # Timeout in seconds
-
-# ADDED: EGO API Configuration from environment variables
-EGO_API_URL = os.getenv("EGO_API_URL")
-EGO_API_BEARER_TOKEN = os.getenv("EGO_API_BEARER_TOKEN")
-EGO_API_CATALOG_ID = os.getenv("EGO_API_CATALOG_ID")
 
 # Global variables for field names
 DIAS_ENTREVISTA = "dias_para_atender_entrevistas"
@@ -201,24 +196,10 @@ def get_available_interview_slots(tool_context: ToolContext) -> dict:
         # Get interview days and times from job details - use actual field names from MCP response
         dias_entrevista_str = job_data.get("dias_para_atender_entrevistas", "")
         horarios_disponibles_str = job_data.get("horarios_disponibles_para_entrevistar", "")
-        tipo_de_perfil = job_data.get("tipo_de_perfil", "No especificado")
-        perfil_de_puesto = job_data.get("perfil_de_puesto", "No especificado")
-        departamento = job_data.get("departamento", "No especificado")
-        corporative_id = job_data.get("corporative_id", "No especificado")
-        business_id = job_data.get("business_id", "No especificado")
-        client_id = job_data.get("client_id", "No especificado")
-
         logger.info("Dias para entrevistas: %s", dias_entrevista_str)
         logger.error(f"[CRITICAL DEBUG] Dias para entrevistas: {dias_entrevista_str}")
         logger.info("Horarios disponibles para entrevistas: %s", horarios_disponibles_str)
         logger.error(f"[CRITICAL DEBUG] Horarios disponibles: {horarios_disponibles_str}")
-        logger.error(f"[CRITICAL DEBUG] perfil_de_puesto: {perfil_de_puesto}")
-        logger.error(f"[CRITICAL DEBUG] tipo_de_perfil: {tipo_de_perfil}")
-        logger.error(f"[CRITICAL DEBUG] departamento: {departamento}")
-        logger.error(f"[CRITICAL DEBUG] corporate_id: {corporative_id}")
-        logger.error(f"[CRITICAL DEBUG] business_id: {business_id}")
-        logger.error(f"[CRITICAL DEBUG] client_id: {client_id}")
-
         if not dias_entrevista_str:
             return {
                 "status": "error",
@@ -537,14 +518,6 @@ def apply_to_job(tool_context: ToolContext) -> dict:
     job_title = job_details.get("nombre_de_la_vacante", f"Vacante ID {job_id_to_apply}")
     job_company = job_details.get("empresa", "No especificada")
     
-    # ADDED: Get additional fields for EGO API
-    tipo_de_perfil = job_details.get("tipo_de_perfil", "No especificado")
-    perfil_de_puesto = job_details.get("perfil_de_puesto", "No especificado")
-    departamento = job_details.get("departamento", "No especificado")
-    corporative_id = job_details.get("corporative_id")
-    business_id = job_details.get("business_id")
-    client_id = job_details.get("client_id")
-
     # Check if already applied
     applied_jobs = tool_context.state.get("applied_jobs", [])
     for job in applied_jobs:
@@ -609,7 +582,7 @@ def apply_to_job(tool_context: ToolContext) -> dict:
         chat_id = '-4958752649'
         
         # Prepare user information for notification
-        user_name_full = tool_context.state.get("user_name", "")
+        user_name = tool_context.state.get("user_name", "")
         last_name = tool_context.state.get("last_name", "")
         email = tool_context.state.get("email", "")
         # Usar contact_phone_number en lugar de phone_number
@@ -620,7 +593,7 @@ def apply_to_job(tool_context: ToolContext) -> dict:
         message = (
             "🔔 *NUEVA POSTULACIÓN*\n\n"
             f"*Información del candidato:*\n"
-            f"Nombre: {user_name_full}\n"
+            f"Nombre: {user_name}\n"
             f"Apellido: {last_name}\n"
             f"Correo: {email}\n"
             f"Teléfono: {phone_number}\n"
@@ -655,72 +628,14 @@ def apply_to_job(tool_context: ToolContext) -> dict:
         # Just log the error but continue with the application process
         logger.error(f"Error sending Telegram notification: {str(e)}", exc_info=True)
         telegram_status = "error"
-
-    # ADDED: Send notification to EGO API
-    ego_api_status = "not_sent"
-    if not all([EGO_API_URL, EGO_API_BEARER_TOKEN, EGO_API_CATALOG_ID]):
-        logger.warning("EGO API environment variables not set. Skipping notification.")
-        ego_api_status = "skipped_config"
-    else:
-        try:
-            ego_headers = {
-                'accept': 'application/json',
-                'Authorization': f'Bearer {EGO_API_BEARER_TOKEN}',
-                'Content-Type': 'application/json'
-            }
-            
-            observaciones_text = f"Cita programada para: {formatted_date_telegram} a las {interview_time.split('-')[0].strip()}"
-
-            # FIX: Process name and last name for EGO API
-            user_name_for_ego = user_name_full.split(' ')[0] if user_name_full else ""
-
-            ego_payload = {
-                "catalog_id": int(EGO_API_CATALOG_ID),
-                "facs": [
-                    {
-                        "nombre": user_name_for_ego,
-                        "apellido_paterno": last_name,
-                        "celular": phone_number,
-                        "observaciones": observaciones_text,
-                        "tipo_de_perfil": tipo_de_perfil,
-                        "perfil_de_puesto": perfil_de_puesto,
-                        "departamento": departamento,
-                        "corporative_id": corporative_id,
-                        "business_id": business_id,
-                        "client_id": client_id
-                    }
-                ],
-                "mtmtables": []
-            }
-            
-            # FIX: Use ensure_ascii=False for correct logging of special characters
-            logger.info(f"Sending payload to EGO API: {json.dumps(ego_payload, ensure_ascii=False)}")
-            logger.error(f"[CRITICAL DEBUG] Sending payload to EGO API: {json.dumps(ego_payload, ensure_ascii=False)}")
-            
-            ego_response = requests.post(EGO_API_URL, headers=ego_headers, json=ego_payload, timeout=15)
-            
-            if ego_response.status_code in [200, 201]:
-                logger.info(f"EGO API notification sent successfully. Response: {ego_response.text}")
-                logger.error(f"[CRITICAL DEBUG] EGO API notification sent successfully. Response: {ego_response.text}")
-                ego_api_status = "sent"
-            else:
-                logger.warning(f"Failed to send EGO API notification. Status: {ego_response.status_code}, Response: {ego_response.text}")
-                logger.error(f"[CRITICAL DEBUG] Failed to send EGO API notification. Status: {ego_response.status_code}, Response: {ego_response.text}")
-                ego_api_status = "failed"
-                
-        except Exception as e:
-            logger.error(f"Error sending EGO API notification: {str(e)}", exc_info=True)
-            logger.error(f"[CRITICAL DEBUG] Error sending EGO API notification: {str(e)}")
-            ego_api_status = "error"
-
+    
     return {
         "status": "success",
         "message": f"¡Excelente! Te has postulado a la vacante '{job_title}' ({job_company}) con una entrevista programada para el {formatted_date_user} a las {interview_time.split('-')[0].strip()}.",
         "job_id": job_id_to_apply,
         "job_title": job_title,
         "interview_datetime": interview_datetime,
-        "telegram_notification": telegram_status,
-        "ego_api_notification": ego_api_status
+        "telegram_notification": telegram_status
     }
 
 

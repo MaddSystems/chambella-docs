@@ -167,7 +167,7 @@ def test_search_tool(mcp_url: str, tool_name: str, params: Dict[str, Any], descr
             else:
                 # Print important fields if they exist
                 important_fields = ["id_vacante", "Nombre_de_la_vacante", "Nombre_de_vacante", "Empresa", 
-                                  "disponible", "Objetivo_del_puesto"]
+                                  "tipo_de_perfil", "Objetivo_del_puesto"]
                 print_colored("\nResult Details:", Colors.BLUE, True)
                 for field in important_fields:
                     if field in result:
@@ -276,8 +276,8 @@ def run_all_tests(mcp_url: str) -> None:
         # Test search_by_id_vacante with known ID (Operador de camioneta)
         {
             "tool": "search_by_id_vacante",
-            "params": {"id_vacante": "42"},
-            "description": "Test search by ID - Operador de camioneta (id_vacante: 42)"
+            "params": {"id_vacante": "47"},
+            "description": "Test search by ID - Operador de camioneta (id_vacante: 47)"
         },
         
         # # Test search_by_id_vacante with another known ID
@@ -716,8 +716,8 @@ def run_all_tests(mcp_url: str) -> None:
         # Test search_by_id_vacante with known ID
         {
             "tool": "search_by_id_vacante",
-            "params": {"id_vacante": "42"},
-            "description": "Test search by ID - Operador de camioneta (id_vacante: 42)"
+            "params": {"id_vacante": "47"},
+            "description": "Test search by ID - Operador de camioneta (id_vacante: 47)"
         },
 
         {
