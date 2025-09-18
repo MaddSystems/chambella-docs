@@ -621,8 +621,6 @@ def apply_to_job(tool_context: ToolContext) -> dict:
             "🔔 *NUEVA POSTULACIÓN*\n\n"
             f"*Información del candidato:*\n"
             f"Nombre: {user_name_full}\n"
-            f"Apellido: {last_name}\n"
-            f"Correo: {email}\n"
             f"Teléfono: {phone_number}\n"
             f"Canal: {channel}\n\n"
             f"*Información de la vacante:*\n"
